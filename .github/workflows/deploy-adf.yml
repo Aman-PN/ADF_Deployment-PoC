@@ -34,10 +34,9 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       # Step 4: Install a pinned Azure CLI version (stable 2.62.0)
-      - name: Install Azure CLI 2.62.0
+      - name: Install Azure CLI
         run: |
           curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-          sudo apt-get install -y azure-cli=2.62.0-1~focal
           az version
 
       # Step 5: Deploy ADF ARM template
