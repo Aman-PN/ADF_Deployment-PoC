@@ -1,0 +1,59 @@
+name: Deploy ADF (from adf_publish branch)
+
+on:
+  push:
+    branches:
+      - develop   # Auto-trigger on PR merge to develop
+  workflow_dispatch:   # Manual trigger button in Actions tab
+
+env:
+  AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ADF_NAME: ${{ secrets.ADF_NAME }}
+
+jobs:
+  deploy-adf:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Step 2: Switch to adf_publish branch (contains ARM templates)
+      - name: Checkout adf_publish branch
+        run: |
+          git fetch origin adf_publish:adf_publish
+          git checkout adf_publish
+
+      # Step 3: Login to Azure using Service Principal
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Step 4: Deploy ADF ARM templates
+      - name: Deploy ARM template
+        uses: azure/cli@v1
+        with:
+          azcliversion: 2.50.0
+          inlineScript: |
+            az account set --subscription $AZURE_SUBSCRIPTION_ID
+
+            TEMPLATE_PATH="ARMTemplateForFactory/ARMTemplateForFactory.json"
+            PARAMS_PATH="ARMTemplateForFactory/ARMTemplateForFactory.parameters.json"
+
+            if [ ! -f "$TEMPLATE_PATH" ]; then
+              echo "Template not found at $TEMPLATE_PATH"
+              ls -R
+              exit 1
+            fi
+
+            echo "Deploying ADF ARM template..."
+            az deployment group create \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --template-file "$TEMPLATE_PATH" \
+              --parameters @"$PARAMS_PATH" \
+              --parameters factoryName="$ADF_NAME" \
+              --mode Incremental
