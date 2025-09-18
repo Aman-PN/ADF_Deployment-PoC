@@ -44,8 +44,8 @@ jobs:
         run: |
           az account set --subscription $AZURE_SUBSCRIPTION_ID
 
-          TEMPLATE_PATH="ARMTemplateForFactory/ARMTemplateForFactory.json"
-          PARAMS_PATH="ARMTemplateForFactory/ARMTemplateForFactory.parameters.json"
+          TEMPLATE_PATH="ad-aw-project-dolly/ARMTemplateForFactory.json"
+          PARAMS_PATH="ad-aw-project-dolly/ARMTemplateParametersForFactory.json"
 
           if [ ! -f "$TEMPLATE_PATH" ]; then
             echo "Template not found at $TEMPLATE_PATH"
