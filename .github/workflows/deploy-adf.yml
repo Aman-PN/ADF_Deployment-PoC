@@ -33,33 +33,30 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Step 4: Install latest Azure CLI
+      # Step 4: Install Azure CLI (latest stable, no Docker)
       - name: Install Azure CLI
         run: |
           curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
           az version
 
-      # Step 4: Deploy ADF ARM templates
+      # Step 5: Deploy ADF ARM template
       - name: Deploy ARM template
-        uses: azure/cli@v1
-        with:
-          azcliversion: 2.50.0
-          inlineScript: |
-            az account set --subscription $AZURE_SUBSCRIPTION_ID
+        run: |
+          az account set --subscription $AZURE_SUBSCRIPTION_ID
 
-            TEMPLATE_PATH="ad-aw-project-dolly/ARMTemplateForFactory.json"
-            PARAMS_PATH="ad-aw-project-dolly/ARMTemplateParametersForFactory.json"
+          TEMPLATE_PATH="ad-aw-project-dolly/ARMTemplateForFactory.json"
+          PARAMS_PATH="ad-aw-project-dolly/ARMTemplateParametersForFactory.json"
 
-            if [ ! -f "$TEMPLATE_PATH" ]; then
-              echo "Template not found at $TEMPLATE_PATH"
-              ls -R
-              exit 1
-            fi
+          if [ ! -f "$TEMPLATE_PATH" ]; then
+            echo "Template not found at $TEMPLATE_PATH"
+            ls -R
+            exit 1
+          fi
 
-            echo "Deploying ADF ARM template..."
-            az deployment group create \
-              --resource-group "$AZURE_RESOURCE_GROUP" \
-              --template-file "$TEMPLATE_PATH" \
-              --parameters @"$PARAMS_PATH" \
-              --parameters factoryName="$ADF_NAME" \
-              --mode Incremental
+          echo "Deploying ADF ARM template..."
+          az deployment group create \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --template-file "$TEMPLATE_PATH" \
+            --parameters @"$PARAMS_PATH" \
+            --parameters factoryName="$ADF_NAME" \
+            --mode Incremental
