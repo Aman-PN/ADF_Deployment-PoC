@@ -44,8 +44,8 @@ jobs:
         run: |
           az account set --subscription $AZURE_SUBSCRIPTION_ID
 
-          TEMPLATE_PATH="ad-aw-project-dolly/ARMTemplateForFactory.json"
-          PARAMS_PATH="ad-aw-project-dolly/ARMTemplateParametersForFactory.json"
+          TEMPLATE_PATH="ARMTemplateForFactory/ARMTemplateForFactory.json"
+          PARAMS_PATH="ARMTemplateForFactory/ARMTemplateForFactory.parameters.json"
 
           if [ ! -f "$TEMPLATE_PATH" ]; then
             echo "Template not found at $TEMPLATE_PATH"
@@ -54,7 +54,10 @@ jobs:
           fi
 
           echo "Deploying ADF ARM template..."
+          DEPLOYMENT_NAME="adf-deploy-$(date +%s)"   # unique name each run
+
           az deployment group create \
+            --name "$DEPLOYMENT_NAME" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --template-file "$TEMPLATE_PATH" \
             --parameters @"$PARAMS_PATH" \
