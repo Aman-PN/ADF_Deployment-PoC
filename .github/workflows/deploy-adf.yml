@@ -15,51 +15,29 @@ jobs:
   deploy-adf:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Checkout repo
-      - name: Checkout repository
+      - name: Checkout adf_publish branch
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          ref: adf_publish
+          path: adf_publish
 
-      # Step 2: Switch to adf_publish branch
-      - name: Checkout adf_publish branch
-        run: |
-          git fetch origin adf_publish:adf_publish
-          git checkout adf_publish
-
-      # Step 3: Login to Azure
-      - name: Azure Login
-        uses: azure/login@v1
+      - name: Login to Azure
+        uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Step 4: Install a pinned Azure CLI version (stable 2.62.0)
-      - name: Install Azure CLI
-        run: |
-          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-          az version
+      - name: Deploy ADF ARM template
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -euo pipefail
+            TEMPLATE="adf_publish/ARMTemplateForFactory.json"
+            PARAMS="adf_publish/ARMTemplateForFactoryParameters.json"
 
-      # Step 5: Deploy ADF ARM template
-      - name: Deploy ARM template
-        run: |
-          az account set --subscription $AZURE_SUBSCRIPTION_ID
-
-          TEMPLATE_PATH="ad-aw-project-dolly/ARMTemplateForFactory.json"
-          PARAMS_PATH="ad-aw-project-dolly/ARMTemplateParametersForFactory.json"
-
-          if [ ! -f "$TEMPLATE_PATH" ]; then
-            echo "Template not found at $TEMPLATE_PATH"
-            ls -R
-            exit 1
-          fi
-
-          echo "Deploying ADF ARM template..."
-          DEPLOYMENT_NAME="adf-deploy-$(date +%s)"   # unique name each run
-
-          az deployment group create \
-            --name "adf-deploy-${GITHUB_RUN_ID}" \
-            --resource-group "$AZURE_RESOURCE_GROUP" \
-            --template-file ad-aw-project-dolly/ARMTemplateForFactory.json \
-            --parameters @ad-aw-project-dolly/ARMTemplateParametersForFactory.json \
-            --parameters factoryName="$ADF_NAME" \
-            --mode Incremental
+            az deployment group create \
+              --name "adf-deploy-${GITHUB_RUN_ID}" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+              --template-file "$TEMPLATE" \
+              --parameters "@$PARAMS" \
+              --parameters factoryName="${{ secrets.ADF_NAME }}"
