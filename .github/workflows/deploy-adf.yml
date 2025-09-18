@@ -31,8 +31,8 @@ jobs:
         with:
           inlineScript: |
             set -euo pipefail
-            TEMPLATE="adf_publish/ARMTemplateForFactory.json"
-            PARAMS="adf_publish/ARMTemplateForFactoryParameters.json"
+            TEMPLATE="ad-aw-project-dolly/ARMTemplateForFactory.json"
+            PARAMS="ad-aw-project-dolly/ARMTemplateParametersForFactory.json"
 
             az deployment group create \
               --name "adf-deploy-${GITHUB_RUN_ID}" \
