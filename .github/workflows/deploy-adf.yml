@@ -57,9 +57,9 @@ jobs:
           DEPLOYMENT_NAME="adf-deploy-$(date +%s)"   # unique name each run
 
           az deployment group create \
-            --name "$DEPLOYMENT_NAME" \
+            --name "adf-deploy-${GITHUB_RUN_ID}" \
             --resource-group "$AZURE_RESOURCE_GROUP" \
-            --template-file "$TEMPLATE_PATH" \
-            --parameters @"$PARAMS_PATH" \
+            --template-file ad-aw-project-dolly/ARMTemplateForFactory.json \
+            --parameters @ad-aw-project-dolly/ARMTemplateParametersForFactory.json \
             --parameters factoryName="$ADF_NAME" \
             --mode Incremental
