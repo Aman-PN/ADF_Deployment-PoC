@@ -15,11 +15,17 @@ jobs:
   deploy-adf:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout adf_publish branch
+      # Step 1: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: adf_publish
-          path: adf_publish
+          fetch-depth: 0
+
+      # Step 2: Switch to adf_publish branch
+      - name: Checkout adf_publish branch
+        run: |
+          git fetch origin adf_publish:adf_publish
+          git checkout adf_publish
 
       - name: Login to Azure
         uses: azure/login@v2
