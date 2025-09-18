@@ -3,8 +3,8 @@ name: Deploy ADF (from adf_publish branch)
 on:
   push:
     branches:
-      - develop   # Auto-trigger on PR merge to develop
-  workflow_dispatch:   # Manual trigger button in Actions tab
+      - develop
+  workflow_dispatch:
 
 env:
   AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
@@ -21,17 +21,23 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Step 2: Switch to adf_publish branch (contains ARM templates)
+      # Step 2: Switch to adf_publish branch
       - name: Checkout adf_publish branch
         run: |
           git fetch origin adf_publish:adf_publish
           git checkout adf_publish
 
-      # Step 3: Login to Azure using Service Principal
+      # Step 3: Login to Azure
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Step 4: Install latest Azure CLI
+      - name: Install Azure CLI
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          az version
 
       # Step 4: Deploy ADF ARM templates
       - name: Deploy ARM template
