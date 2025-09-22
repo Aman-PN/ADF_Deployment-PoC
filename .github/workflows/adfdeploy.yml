@@ -1,0 +1,84 @@
+name: Deploy ADF Pipelines
+ 
+on:
+  workflow_dispatch:
+    inputs:
+      resource_group:
+        description: 'Azure Resource Group'
+        required: true
+        type: choice
+        options:
+          - rg-mdp-cosmos-stg-cus-001
+          - rg-mdp-cosmos-dev-cus-001
+ 
+      data_factory_name: 
+        description: 'Azure Data Factory Name'
+        required: true
+        type: choice
+        options:
+          - adf-mdp-cosmos-stg-cus-001
+          - adf-mdp-cosmos-dev-cus-001
+          - adf-mdp-cosmos-prod-cus-001
+ 
+      pipelines: 
+        description: 'ADF Pipelines to deploy (comma-separated list)'
+        required: true
+        default: ' '  #Blank for user input
+ 
+      branch:
+        description: 'Branch to deploy from'
+        required: true
+        type: choice
+        options:
+        - develop
+        - stage
+        - release
+ 
+      environment:
+        description: 'Deployment Environment'
+        required: false
+        type: choice
+        options:
+          - prod
+          - stage
+          - dev
+ 
+env:
+PIPELINES_PATH: './pipeline/' # Path for pipelines: folder in repository
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy-adf-pipelines:
+    runs-on: { group: ubuntu-ung } 
+    environment: $ff github.event.inouts.environment 11
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.inputs.branch }}
+ 
+    - name: Login to Azure
+      uses: azure/login@a65d910e8af852a8061c627c456678983e180302 #v2.2.0
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+ 
+    - name: Deploy ADF pipelines
+      run: |
+        # az account set --subscription "{{ var.ARM_SUBSCRIPTION_ID }}"
+        IFS=',' read -r -a pipeline_array <<< "${{ github.event.inputs.pipelines }}"
+        for pipeline in "${pipeline_array[@]}"
+        do
+          pipeline_file="${{ env. PIPELINES_PATH }}${pipeline).json"
+          echo "Deploying pipeline: $pipeline"
+          az datafactory pipeline create \
+            --resource-group ${{ github.event.inputs.resource_group }} \
+            --factory-nane ${{ github.event.inputs.data_factory_name }} \
+            -name $pipeline \
+            --pipeline $pipeline_file
+        done 
+
+    - name: Logout of Azure
+      run: az logout
