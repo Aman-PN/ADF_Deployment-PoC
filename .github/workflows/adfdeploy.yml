@@ -23,7 +23,15 @@ on:
         description: 'ADF Pipelines to deploy (comma-separated list)'
         required: true
         default: ''  #Blank for user input
- 
+        
+      Datasets:
+        description: 'Enter the Dataset name'
+        type: string
+        
+      LinkedServices:
+        description: 'Enter the Linked service name'
+        type: string
+        
       branch:
         description: 'Branch to deploy from'
         required: true
