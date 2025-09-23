@@ -43,7 +43,7 @@ on:
           - dev
  
 env:
-PIPELINES_PATH: './pipeline/' # Path for pipelines: folder in repository
+PIPELINES_PATH: '/pipeline/' # Path for pipelines: folder in repository
 permissions:
   contents: read
   id-token: write
