@@ -20,88 +20,121 @@ on:
           - stage-env-adf-1
 
       linked_services:
-        description: 'Linked Services to deploy (comma-separated)'
+        description: 'Linked Services to deploy (comma-separated, leave empty for full deployment)'
         required: false
         default: ''
 
       datasets:
-        description: 'Datasets to deploy (comma-separated)'
+        description: 'Datasets to deploy (comma-separated, leave empty for full deployment)'
         required: false
         default: ''
 
       pipelines:
-        description: 'Pipelines to deploy (comma-separated)'
+        description: 'Pipelines to deploy (comma-separated, leave empty for full deployment)'
         required: false
         default: ''
 
       branch:
-        description: 'Branch to deploy from'
+        description: 'Branch to deploy from (should contain adf_publish folder)'
         required: true
         type: choice
         options:
           - develop
           - stage
           - release
+          - adf_publish
+
+permissions:
+  contents: read
+  id-token: write
 
 env:
   LINKEDSERVICES_PATH: 'linkedService/'
   DATASETS_PATH: 'dataset/'
   PIPELINES_PATH: 'pipeline/'
 
-permissions:
-  contents: read
-  id-token: write
-
 jobs:
   deploy-adf:
     runs-on: ubuntu-latest
 
     steps:
+      # Checkout selected branch
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.branch }}
 
+      # Login to Azure
       - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy Linked Services
-        if: ${{ github.event.inputs.linked_services != '' }}
+      # Deploy selected resources or full ARM template
+      - name: Deploy ADF Resources
         run: |
-          IFS=',' read -r -a arr <<< "${{ github.event.inputs.linked_services }}"
-          for item in "${arr[@]}"; do
-            file="${{ env.LINKEDSERVICES_PATH }}${item}.json"
-            echo "Deploying Linked Service: $item"
-            az deployment group create \
-              --resource-group ${{ github.event.inputs.resource_group }} \
-              --template-file "$file" \
-              --parameters factoryName=${{ github.event.inputs.data_factory_name }}
-          done
+          set -e
 
-      - name: Deploy Datasets
-        if: ${{ github.event.inputs.datasets != '' }}
-        run: |
-          IFS=',' read -r -a arr <<< "${{ github.event.inputs.datasets }}"
-          for item in "${arr[@]}"; do
-            file="${{ env.DATASETS_PATH }}${item}.json"
-            echo "Deploying Dataset: $item"
-            az deployment group create \
-              --resource-group ${{ github.event.inputs.resource_group }} \
-              --template-file "$file" \
-              --parameters factoryName=${{ github.event.inputs.data_factory_name }}
-          done
+          RESOURCE_GROUP="${{ github.event.inputs.resource_group }}"
+          FACTORY_NAME="${{ github.event.inputs.data_factory_name }}"
 
-      - name: Deploy Pipelines
-        if: ${{ github.event.inputs.pipelines != '' }}
-        run: |
-          IFS=',' read -r -a arr <<< "${{ github.event.inputs.pipelines }}"
-          for item in "${arr[@]}"; do
-            file="${{ env.PIPELINES_PATH }}${item}.json"
-            echo "Deploying Pipeline: $item"
-            az deployment group create \
-              --resource-group ${{ github.event.inputs.resource_group }} \
-              --template-file "$file" \
-              --parameters factoryName=${{ github.event.inputs.data_factory_name }}
-          done
+          # Deploy selected Linked Services
+          if [ "${{ github.event.inputs.linked_services }}" != "" ]; then
+            IFS=',' read -r -a arr <<< "${{ github.event.inputs.linked_services }}"
+            for item in "${arr[@]}"; do
+              file="${LINKEDSERVICES_PATH}${item}.json"
+              echo "Deploying Linked Service: $item"
+              az deployment group create \
+                --resource-group "$RESOURCE_GROUP" \
+                --template-file "$file" \
+                --parameters factoryName="$FACTORY_NAME"
+            done
+          fi
 
-      - run: az logout
+          # Deploy selected Datasets
+          if [ "${{ github.event.inputs.datasets }}" != "" ]; then
+            IFS=',' read -r -a arr <<< "${{ github.event.inputs.datasets }}"
+            for item in "${arr[@]}"; do
+              file="${DATASETS_PATH}${item}.json"
+              echo "Deploying Dataset: $item"
+              az deployment group create \
+                --resource-group "$RESOURCE_GROUP" \
+                --template-file "$file" \
+                --parameters factoryName="$FACTORY_NAME"
+            done
+          fi
+
+          # Deploy selected Pipelines
+          if [ "${{ github.event.inputs.pipelines }}" != "" ]; then
+            IFS=',' read -r -a arr <<< "${{ github.event.inputs.pipelines }}"
+            for item in "${arr[@]}"; do
+              file="${PIPELINES_PATH}${item}.json"
+              echo "Deploying Pipeline: $item"
+              az deployment group create \
+                --resource-group "$RESOURCE_GROUP" \
+                --template-file "$file" \
+                --parameters factoryName="$FACTORY_NAME"
+            done
+          fi
+
+          # If nothing selected, deploy full ARM template
+          if [ "${{ github.event.inputs.linked_services }}" == "" ] && \
+             [ "${{ github.event.inputs.datasets }}" == "" ] && \
+             [ "${{ github.event.inputs.pipelines }}" == "" ]; then
+
+            TEMPLATE_FILE="adf_publish/ARMTemplateForFactory.json"
+            PARAMETERS_FILE="adf_publish/ARMTemplateParametersForFactory.json"
+
+            if [ ! -f "$TEMPLATE_FILE" ]; then
+              echo "Error: $TEMPLATE_FILE not found. Make sure you published in ADF."
+              exit 1
+            fi
+
+            echo "Deploying FULL ADF ARM Template to Resource Group: $RESOURCE_GROUP"
+            az deployment group create \
+              --resource-group "$RESOURCE_GROUP" \
+              --template-file "$TEMPLATE_FILE" \
+              --parameters "@$PARAMETERS_FILE"
+          fi
+
+      # Logout Azure
+      - name: Logout Azure
+        run: az logout
