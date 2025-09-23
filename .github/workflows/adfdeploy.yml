@@ -67,7 +67,6 @@ jobs:
  
     - name: Deploy ADF pipelines
       run: |
-        # az account set --subscription "{{ var.ARM_SUBSCRIPTION_ID }}"
         IFS=',' read -r -a pipeline_array <<< "${{ github.event.inputs.pipelines }}"
         for pipeline in "${pipeline_array[@]}"
         do
