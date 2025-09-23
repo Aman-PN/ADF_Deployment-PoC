@@ -67,6 +67,7 @@ jobs:
  
     - name: Deploy ADF pipelines
       run: |
+        az config set extension.dynamic_install_allow_preview=true
         IFS=',' read -r -a pipeline_array <<< "${{ github.event.inputs.pipelines }}"
         for pipeline in "${pipeline_array[@]}"
         do
