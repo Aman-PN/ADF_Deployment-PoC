@@ -20,17 +20,17 @@ on:
           - stage-env-adf-1
 
       linked_services:
-        description: 'Linked Services (comma-separated)'
+        description: 'Linked Services to deploy (comma-separated)'
         required: false
         default: ''
 
       datasets:
-        description: 'Datasets (comma-separated)'
+        description: 'Datasets to deploy (comma-separated)'
         required: false
         default: ''
 
       pipelines:
-        description: 'Pipelines (comma-separated)'
+        description: 'Pipelines to deploy (comma-separated)'
         required: false
         default: ''
 
@@ -65,52 +65,43 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - run: az extension add --name datafactory
-
-      - name: Deploy ADF Resources
+      - name: Deploy Linked Services
+        if: ${{ github.event.inputs.linked_services != '' }}
         run: |
-          deploy_linked_services() {
-            IFS=',' read -r -a arr <<< "$1"
-            for item in "${arr[@]}"; do
-              file="${{ env.LINKEDSERVICES_PATH }}${item}.json"
-              echo "Deploying Linked Service: $item"
-              az datafactory linked-service create \
-                --resource-group ${{ github.event.inputs.resource_group }} \
-                --factory-name ${{ github.event.inputs.data_factory_name }} \
-                --name "$item" \
-                --properties @"$file"
-            done
-          }
+          IFS=',' read -r -a arr <<< "${{ github.event.inputs.linked_services }}"
+          for item in "${arr[@]}"; do
+            file="${{ env.LINKEDSERVICES_PATH }}${item}.json"
+            echo "Deploying Linked Service: $item"
+            az deployment group create \
+              --resource-group ${{ github.event.inputs.resource_group }} \
+              --template-file "$file" \
+              --parameters factoryName=${{ github.event.inputs.data_factory_name }}
+          done
 
-          deploy_datasets() {
-            IFS=',' read -r -a arr <<< "$1"
-            for item in "${arr[@]}"; do
-              file="${{ env.DATASETS_PATH }}${item}.json"
-              echo "Deploying Dataset: $item"
-              az datafactory dataset create \
-                --resource-group ${{ github.event.inputs.resource_group }} \
-                --factory-name ${{ github.event.inputs.data_factory_name }} \
-                --name "$item" \
-                --dataset @"$file"
-            done
-          }
+      - name: Deploy Datasets
+        if: ${{ github.event.inputs.datasets != '' }}
+        run: |
+          IFS=',' read -r -a arr <<< "${{ github.event.inputs.datasets }}"
+          for item in "${arr[@]}"; do
+            file="${{ env.DATASETS_PATH }}${item}.json"
+            echo "Deploying Dataset: $item"
+            az deployment group create \
+              --resource-group ${{ github.event.inputs.resource_group }} \
+              --template-file "$file" \
+              --parameters factoryName=${{ github.event.inputs.data_factory_name }}
+          done
 
-          deploy_pipelines() {
-            IFS=',' read -r -a arr <<< "$1"
-            for item in "${arr[@]}"; do
-              file="${{ env.PIPELINES_PATH }}${item}.json"
-              echo "Deploying Pipeline: $item"
-              az datafactory pipeline create \
-                --resource-group ${{ github.event.inputs.resource_group }} \
-                --factory-name ${{ github.event.inputs.data_factory_name }} \
-                --name "$item" \
-                --pipeline @"$file"
-            done
-          }
-
-          # Deploy if inputs are provided
-          [ -n "${{ github.event.inputs.linked_services }}" ] && deploy_linked_services "${{ github.event.inputs.linked_services }}"
-          [ -n "${{ github.event.inputs.datasets }}" ] && deploy_datasets "${{ github.event.inputs.datasets }}"
-          [ -n "${{ github.event.inputs.pipelines }}" ] && deploy_pipelines "${{ github.event.inputs.pipelines }}"
+      - name: Deploy Pipelines
+        if: ${{ github.event.inputs.pipelines != '' }}
+        run: |
+          IFS=',' read -r -a arr <<< "${{ github.event.inputs.pipelines }}"
+          for item in "${arr[@]}"; do
+            file="${{ env.PIPELINES_PATH }}${item}.json"
+            echo "Deploying Pipeline: $item"
+            az deployment group create \
+              --resource-group ${{ github.event.inputs.resource_group }} \
+              --template-file "$file" \
+              --parameters factoryName=${{ github.event.inputs.data_factory_name }}
+          done
 
       - run: az logout
