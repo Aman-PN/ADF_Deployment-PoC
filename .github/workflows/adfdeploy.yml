@@ -120,8 +120,8 @@ jobs:
              [ "${{ github.event.inputs.datasets }}" == "" ] && \
              [ "${{ github.event.inputs.pipelines }}" == "" ]; then
 
-            TEMPLATE_FILE="adf_publish/ARMTemplateForFactory.json"
-            PARAMETERS_FILE="adf_publish/ARMTemplateParametersForFactory.json"
+            TEMPLATE_FILE="dev-env-adf-1/ARMTemplateForFactory.json"
+            PARAMETERS_FILE="dev-env-adf-1/ARMTemplateParametersForFactory.json"
 
             if [ ! -f "$TEMPLATE_FILE" ]; then
               echo "Error: $TEMPLATE_FILE not found. Make sure you published in ADF."
