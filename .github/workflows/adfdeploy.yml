@@ -8,17 +8,16 @@ on:
         required: true
         type: choice
         options:
-          - rg-mdp-cosmos-stg-cus-001
-          - rg-mdp-cosmos-dev-cus-001
+          - Poc_Development
+          - Poc_Stage
  
       data_factory_name: 
         description: 'Azure Data Factory Name'
         required: true
         type: choice
         options:
-          - adf-mdp-cosmos-stg-cus-001
-          - adf-mdp-cosmos-dev-cus-001
-          - adf-mdp-cosmos-prod-cus-001
+          - dev-env-adf-1
+          - stage-env-adf-1
  
       pipelines: 
         description: 'ADF Pipelines to deploy (comma-separated list)'
@@ -51,8 +50,8 @@ permissions:
 
 jobs:
   deploy-adf-pipelines:
-    runs-on: { group: ubuntu-ung } 
-    environment: $ff github.event.inouts.environment 11
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inouts.environment }}
 
     steps:
     - name: Checkout code
@@ -61,7 +60,7 @@ jobs:
         ref: ${{ github.event.inputs.branch }}
  
     - name: Login to Azure
-      uses: azure/login@a65d910e8af852a8061c627c456678983e180302 #v2.2.0
+      uses: azure/login@v2
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
  
