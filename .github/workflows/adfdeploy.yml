@@ -85,12 +85,15 @@ jobs:
             fi
           }
 
+          # Linked Services
           deploy_items "Linked Service" "${{ github.event.inputs.linked_services }}" "${{ env.LINKEDSERVICES_PATH }}" \
             'az datafactory linked-service create --resource-group ${{ github.event.inputs.resource_group }} --factory-name ${{ github.event.inputs.data_factory_name }} --name "$1" --properties @"$2"'
 
+          # Datasets
           deploy_items "Dataset" "${{ github.event.inputs.datasets }}" "${{ env.DATASETS_PATH }}" \
             'az datafactory dataset create --resource-group ${{ github.event.inputs.resource_group }} --factory-name ${{ github.event.inputs.data_factory_name }} --name "$1" --dataset @"$2"'
 
+          # Pipelines
           deploy_items "Pipeline" "${{ github.event.inputs.pipelines }}" "${{ env.PIPELINES_PATH }}" \
             'az datafactory pipeline create --resource-group ${{ github.event.inputs.resource_group }} --factory-name ${{ github.event.inputs.data_factory_name }} --name "$1" --pipeline @"$2"'
 
