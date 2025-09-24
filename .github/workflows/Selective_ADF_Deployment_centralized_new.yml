@@ -6,6 +6,7 @@ on:
         description: 'environment'
         type: choice
         options:
+          - 'dev'
           - 'stage'
           - 'prod'
         required: true
