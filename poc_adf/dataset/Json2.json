@@ -1,10 +1,6 @@
 {
 	"name": "Json2",
 	"properties": {
-		"linkedServiceName": {
-			"referenceName": "adls_link",
-			"type": "LinkedServiceReference"
-		},
 		"annotations": [],
 		"type": "Json",
 		"typeProperties": {
