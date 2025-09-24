@@ -29,6 +29,7 @@ on:
         required: true
         type: choice
         options:
+        - adf_publish
         - develop
         - stage
         - release
