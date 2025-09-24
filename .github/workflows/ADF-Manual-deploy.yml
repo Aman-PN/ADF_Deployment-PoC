@@ -81,7 +81,7 @@ jobs:
             --resource-group ${{ github.event.inputs.resource_group }} \
             --factory-name ${{ github.event.inputs.data_factory_name }} \
             --name $pipeline \
-            --pipeline @"$pipeline_file" 
+            --pipeline "$pipeline_file" 
         done 
 
     - name: Logout of Azure
