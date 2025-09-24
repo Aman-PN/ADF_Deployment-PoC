@@ -49,9 +49,9 @@ permissions:
   id-token: write
 
 env:
-  LINKEDSERVICES_PATH: 'linkedService/'
-  DATASETS_PATH: 'dataset/'
-  PIPELINES_PATH: 'pipeline/'
+  LINKEDSERVICES_PATH: 'poc_adf/linkedService/'
+  DATASETS_PATH: 'poc_adf/dataset/'
+  PIPELINES_PATH: 'poc_adf/pipeline/'
 
 jobs:
   deploy-adf:
