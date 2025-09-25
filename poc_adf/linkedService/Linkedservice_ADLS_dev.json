@@ -1,0 +1,24 @@
+{
+	"name": "Linkedservice_ADLS_dev",
+	"properties": {
+		"parameters": {
+			"EndpointURL": {
+				"type": "string",
+				"defaultValue": ".dfs.core.windows.net"
+			}
+		},
+		"annotations": [],
+		"type": "AzureBlobFS",
+		"typeProperties": {
+			"url": "https://adlspocdev.dfs.core.windows.net",
+			"accountKey": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "Linkedservice_KeyVault_dev",
+					"type": "LinkedServiceReference"
+				},
+				"secretName": "adlspocdev-key"
+			}
+		}
+	}
+}
