@@ -11,8 +11,7 @@
 					"referenceName": "LS_KeyVault_dev",
 					"type": "LinkedServiceReference"
 				},
-				"secretName": "adlspocdev-key",
-				"secretVersion": "f34054425d7c486eb8ca56891ac64e21"
+				"secretName": "adlspocdev-key"
 			}
 		}
 	}
