@@ -1,12 +1,6 @@
 {
 	"name": "Linkedservice_ADLS_dev",
 	"properties": {
-		"parameters": {
-			"EndpointURL": {
-				"type": "string",
-				"defaultValue": ".dfs.core.windows.net"
-			}
-		},
 		"annotations": [],
 		"type": "AzureBlobFS",
 		"typeProperties": {
