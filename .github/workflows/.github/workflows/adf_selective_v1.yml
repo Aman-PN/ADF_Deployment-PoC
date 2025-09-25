@@ -1,0 +1,301 @@
+name: Centralized_Selective_ADF_Deployment_with_no_dependencies
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'environment'
+        required: true
+        type: string
+      Pipelines:
+        description: 'Provide the details of the pipelines to be deployed'
+        type: string
+      LinkedServices:
+        description: 'Provide the details of the linked services to be deployed'
+        type: string
+      Datasets:
+        description: 'Provide the details of the datasets to be deployed'
+        type: string
+      Triggers:
+        description: 'Provide the details of the triggers to be deployed'
+        type: string
+      Triggers-status:
+        description: 'Provide the status of the triggers to be deployed'
+        type: string
+        default: 'Started'
+
+
+permissions:
+      id-token: write
+      contents: read
+
+jobs:
+
+  centralized_selective_adf_deployment:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      adfbranch : ${{ vars.ADFBRANCH }}
+      subscriptionIdVariable : ${{ vars.ARM_SUBSCRIPTION_ID }}
+      clientIdVariable: ${{ secrets.ARM_CLIENT_ID}}
+      clientSecretVariable: ${{ secrets.ARM_CLIENT_SECRET}}
+      tenantIdVariable : ${{ vars.ARM_TENANT_ID }}
+      rsg : ${{ vars.RSG }}
+      adf : ${{ vars.ADF }}
+      arm_folder : ${{ vars.ARM_FOLDER }}
+
+
+    steps:
+      - name: Pipeline run information
+        run: |
+          echo "Selected environment is ${{ inputs.environment }}"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        #with:
+          #ref: ${{ vars.ADFBRANCH }}
+          ### path: ${{ vars.ARM_FOLDER }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12.3' # Change to your Python version if needed
+
+      - name: create replace parameters python script
+        run: |
+          touch params.json
+          pwd
+          cat <<EOT > replaceparams.py
+          """
+              This program finds and replaces source environment variables with
+              target environment variables
+          """
+
+          import os, sys
+          from csv import reader
+
+
+          def replaceString(fileName, sourceSetting, targetSetting):
+              """
+              This function finds the sourceSetting string in the file
+              and replaces it with targetSetting
+              """
+              fin = open(fileName, "rt")
+              data = fin.read()
+              # replace all occurrences of the required string
+              data = data.replace(sourceSetting, targetSetting)
+              # close the input file
+              fin.close()
+              # open the input file in write mode
+              fin = open(fileName, "wt")
+              # overrite the input file with the resulting data
+              fin.write(data)
+              # close the file
+              fin.close()
+
+
+          def getFileNames(directoryName):
+              """
+              This function gets list of all names within the directory
+              """
+              fileList = []
+              # iterate over files in that directory
+              for (root, dirs, file) in os.walk(directoryName):
+                  for f in file:
+                      if '.json' in f:
+                          fileList.append(os.path.join(root, f))
+
+              return fileList
+
+
+          def prepareFiles(sourceDirectory, nameValuePairFile):
+              """
+              This function is the main that takes source directory and replaces all values based on
+              nameValuePairFile
+              """
+              with open(nameValuePairFile, 'r') as read_obj:
+                  # pass the file object to reader() to get the reader object
+                  csv_reader = reader(read_obj)
+                  # Pass reader object to list() to get a list of lists
+                  list_of_rows = list(csv_reader)
+                  list_of_files = getFileNames(sourceDirectory)
+                  for fileName in list_of_files:
+                      print(fileName)
+                      for item in list_of_rows:
+                          replaceString(fileName, item[0], item[1])
+          if __name__ == '__main__':
+            args = sys.argv
+              # args[0] = current file
+              # args[1] = function name
+              # args[2:] = function args : (*unpacked)
+            globals()[args[1]](*args[2:])
+          EOT
+
+          cat <<EOT > adfutility.py
+          import json
+          import sys
+
+          def getname(inputfile):
+              with open(inputfile,'r') as gn:
+                  data = json.load(gn)
+                  name=data["name"]
+              print(name)
+
+          def getfile(inputfile,outputfile):
+              with open(inputfile,'r') as ipf:
+                  data=json.load(ipf)
+                  properties=data["properties"]
+                  with open(outputfile,'w') as opf:
+                      json.dump(properties,opf)
+
+          def getparam(paramfile,valuefile,component):
+              with open(paramfile,'r') as pf:
+                  data=json.load(pf)
+                  with open(valuefile,'r') as vf:
+                      value=json.load(vf)
+                      for p,v in value.items():
+                          if(component=="pipeline"):
+                              data["properties"]["parameters"][p]["defaultValue"]=v
+                          else:
+                              data["pipeline"]["parameters"][p] = v
+                      with open(paramfile, 'w') as opf:
+                          json.dump(data, opf)
+
+          if __name__ == '__main__':
+              globals()[sys.argv[1]](*sys.argv[2:])
+          EOT
+
+      - name: replace parameters
+        run : |
+          echo "${{ vars.PARAMETERIZATION }}" > parameters.txt
+          python replaceparams.py prepareFiles ${{ vars.ARM_FOLDER }} parameters.txt
+
+      - name: 'Az Login'
+        run : |
+          az login --service-principal -u ${{ secrets.ARM_CLIENT_ID }} -p ${{ secrets.ARM_CLIENT_SECRET }} -t ${{ vars.ARM_TENANT_ID }} --allow-no-subscriptions
+          az config set extension.use_dynamic_install=yes_without_prompt
+
+      - name: 'Get current triggers status'
+        continue-on-error: true
+        run: |
+          az datafactory trigger list --factory-name "${{vars.ADF}}" --resource-group "${{vars.RSG}}" --query "[?properties.runtimeState=='Started'].name" -o tsv > triggers.txt
+          #az datafactory trigger list --factory-name "${{vars.ADF}}" --resource-group "${{vars.RSG}}" --query "[?properties.runtimeState=='Stopped'].name" -o tsv > stopped_triggers.txt
+
+
+      - name: 'stop triggers'
+        continue-on-error: true
+        run : |
+          for trigger in $(cat triggers.txt)
+          do
+            az datafactory trigger stop --factory-name "${{ vars.ADF }}" --resource-group "${{vars.RSG}}" --name "$trigger"
+            echo "stopped $trigger trigger"
+          done
+
+      - name: 'linked service deployment'
+        if: ${{ inputs.LinkedServices  != null }}
+        run : |
+ 
+          for linkedService in ${{inputs.LinkedServices}};
+          do
+            ls
+            echo " starting"
+
+            python adfutility.py getname "${{ vars.ARM_FOLDER }}/linkedService/$linkedService.json">ls.txt
+            echo " after python adfutility.py"
+            lsname=$(cat ls.txt)
+            python adfutility.py getfile "${{ vars.ARM_FOLDER }}/linkedService/$linkedService.json" "${{ vars.ARM_FOLDER }}/linkedService/$lsname.json"
+            echo "Creating $lsname linked service"
+            az datafactory linked-service create --factory-name "$adf" --name "$lsname" --properties "${{ vars.ARM_FOLDER }}/linkedService/$lsname.json" --resource-group "$rsg" --output table
+
+            if [ $? -eq 0 ];
+            then
+              echo "Created $lsname linkedService successfully"
+            else
+              echo "Failed to create $lsname linkedService"
+            fi
+          done
+
+      - name: 'dataset deployment'
+        if: ${{ inputs.Datasets  != null }}
+        run : |
+          for dataset in ${{inputs.Datasets}};
+          do
+            python adfutility.py getname "${{ vars.ARM_FOLDER }}/dataset/$dataset.json">ds.txt
+            dsname=$(cat ds.txt)
+            python adfutility.py getfile "${{ vars.ARM_FOLDER }}/dataset/$dataset.json" "${{ vars.ARM_FOLDER }}/dataset/$dsname.json"
+            echo "Creating $dsname linked service"
+            echo 'az datafactory dataset create --factory-name "$adf" --name "$dsname" --properties "${{ vars.ARM_FOLDER }}/dataset/$dsname.json" --resource-group "$rsg" --output table'
+            az datafactory dataset create --factory-name "$adf" --name "$dsname" --properties "${{ vars.ARM_FOLDER }}/dataset/$dsname.json" --resource-group "$rsg" --output table
+            if [ $? -eq 0 ];
+            then
+              echo "Created $dsname dataset successfully"
+            else
+              echo "Failed to create $dsname dataset"
+            fi
+          done
+
+      - name: 'pipeline service deployment'
+        if: ${{ inputs.Pipelines  != null }}
+        run : |
+          for pipeline in ${{inputs.Pipelines}};
+          do
+            echo "Creating $pipeline pipeline"
+            python adfutility.py getname "${{ vars.ARM_FOLDER }}/pipeline/$pipeline.json">pipeline.txt
+            pipelinename=$(cat pipeline.txt)
+            python adfutility.py getfile "${{ vars.ARM_FOLDER }}/pipeline/$pipeline.json" "${{ vars.ARM_FOLDER }}/pipeline/$pipelinename.json"
+            echo "Creating $pipelinename pipeline"
+            ls -la ${{ vars.ARM_FOLDER }}/pipeline/
+            az datafactory pipeline create --factory-name "$adf" --name "$pipelinename" --pipeline "${{ vars.ARM_FOLDER }}/pipeline/$pipelinename.json" --resource-group "$rsg" --output table
+            if [ $? -eq 0 ];
+              then
+                echo "Created $pipeline pipeline successfully"
+            else
+              echo "Failed to create $pipeline pipeline"
+            fi
+          done
+
+      - name: 'triggers deployment'
+        if: ${{ inputs.Triggers != null }}
+        run : |
+          for trigger in ${{inputs.Triggers}};
+          do
+            echo "Creating $trigger trigger"
+            python adfutility.py getname "${{ vars.ARM_FOLDER }}/trigger/$trigger.json">trigger.txt
+            triggername=$(cat trigger.txt)
+            python adfutility.py getfile "${{ vars.ARM_FOLDER }}/trigger/$trigger.json" "${{ vars.ARM_FOLDER }}/trigger/${triggername}duprop.json"
+            az datafactory trigger create --factory-name "$adf" --name "$trigger" --properties "${{ vars.ARM_FOLDER }}/trigger/${triggername}duprop.json" --resource-group "$rsg" --output table
+            if [ $? -eq 0 ];
+              then
+                echo "Created $trigger trigger successfully"
+            else
+              echo "Failed to create $trigger trigger"
+            fi
+          done
+
+      - name: 'new triggers status'
+        if: ${{ inputs.Triggers != null }}
+        run: |
+          if [ ${{inputs.Triggers-status}} == "Started" ]; then
+            for trigger in ${{inputs.Triggers}}
+            do
+              if [ $(grep -c "$trigger" triggers.txt) -eq 0 ]; then
+                echo $trigger >> triggers.txt
+              else
+                echo "$trigger already exists in the list"
+              fi
+            done
+          else
+            echo "No new triggers to start"
+          fi
+
+      - name: 'initiate triggers'
+        if: always()
+        run : |
+          for trigger in $(cat triggers.txt)
+          do
+            az datafactory trigger start --factory-name "${{ vars.ADF }}" --resource-group "${{vars.RSG}}" --name "$trigger"
+            echo "Started $trigger trigger"
+          done
+
+      - name: 'cleanup'
+        run: |
+          rm -rf triggers.txt adfutility.py replaceparams.py params.json
