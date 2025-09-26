@@ -1,4 +1,4 @@
-name: Centralized_Selective_ADF_Deployment_with_no_dependencies
+name: ADF_Deployment_Workflow
 on:
   workflow_call:
     inputs:
