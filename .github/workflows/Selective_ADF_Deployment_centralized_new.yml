@@ -1,4 +1,4 @@
-name: Selective_ADF_Deployment_centralized_new
+name: ADF_Deployment_Workflow
 on:
   workflow_dispatch:
     inputs:
