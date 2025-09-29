@@ -39,9 +39,9 @@ jobs:
           echo ${{ vars.AUTHORIZED_USERS_FOR_PROD_DEPLOYMENTS }} >> ProdDeployUsersWhiteList.txt
           if grep '${{ github.actor }}' ProdDeployUsersWhiteList.txt;
           then
-            echo "${{ github.actor }} user is authorized to deploy on PRODUCTION environment"
+            echo "${{ github.actor }} user is authorized to deploy on Stage & Production environment"
           else
-            echo "${{ github.actor }} user is not authorized to deploy on PRODUCTION environment"
+            echo "${{ github.actor }} user is not authorized to deploy on Stage & Production environment"
             exit 1
           fi
 
@@ -49,7 +49,7 @@ jobs:
     needs: User-Varification
     if : always() && ( contains( inputs.environment, 'prod' ) || contains( inputs.environment, 'stage' ))
     runs-on: ubuntu-latest
-    environment: ${{ inputs.team }}
+    #environment: ${{ inputs.team }}
     steps:
         - name: Approval Request
           run: |
@@ -60,7 +60,7 @@ jobs:
       - Approval-Request
       - User-Varification
     if: always() && (needs.User-Varification.result == 'success' || needs.User-Varification.result == 'skipped') && (needs.Approval-Request.result == 'success' || needs.Approval-Request.result == 'skipped')
-    runs-on: [ uhg-runner ]
+    runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
       adfbranch : ${{ vars.ADFBRANCH }}
