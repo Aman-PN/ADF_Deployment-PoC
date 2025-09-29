@@ -1,5 +1,5 @@
 # ADF Pipeline Deployment PoC 🚀
-[![CI/CD Pipeline](https://github.com/Aman-PN/ADF_Deployment-PoC/actions/workflows/deploy.yml/badge.svg)](https://github.com/Aman-PN/ADF_Deployment-PoC/actions/workflows/Selective_ADF_Deployment_centralized_new.yml)
+[![ADF_Deployment_Workflow](https://github.com/Aman-PN/ADF_Deployment-PoC/actions/workflows/Selective_ADF_Deployment_centralized_new.yml/badge.svg?branch=develop)](https://github.com/Aman-PN/ADF_Deployment-PoC/actions/workflows/Selective_ADF_Deployment_centralized_new.yml)
 
 A Proof of Concept implementation for automated Azure Data Factory pipeline deployment using GitHub Actions, supporting multi-environment CI/CD workflows.
 
