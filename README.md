@@ -43,13 +43,7 @@ git clone https://github.com/Aman-PN/ADF_Deployment-PoC.git
 cd ADF_Deployment-PoC
 ```
 
-### 2. Environment Configuration
-```bash
-# Create environment-specific parameters
-cp config/stage.params.example.json config/stage.params.json
-```
-
-### 3. GitHub Secrets Setup
+### 2. GitHub Secrets Setup
 Configure these secrets in your repo settings:
 - `AZURE_CREDENTIALS` - Azure service principal credentials
 - `ARM_SUBSCRIPTION_ID` - Target Azure subscription ID
@@ -61,9 +55,9 @@ Configure these secrets in your repo settings:
 ```yaml
 on:
   push:
-    branches: [ main ]
+    branches: [ develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ develop ]
   workflow_dispatch:
 ```
 
@@ -78,15 +72,6 @@ Modify `.github/workflows/deploy.yml` to:
 - Add environment-specific variables
 - Adjust approval gates
 - Modify deployment triggers
-
-Example environment configuration:
-```json
-{
-  "environment": "stage",
-  "dataFactoryName": "adf-core-stage",
-  "location": "eastus2"
-}
-```
 
 ## 🤝 Contributing
 1. Fork the repository
