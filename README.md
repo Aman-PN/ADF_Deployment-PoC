@@ -10,7 +10,7 @@ This solution demonstrates:
 - GitHub Actions-powered CI/CD pipeline
 - Infrastructure-as-Code (IaC) implementation
 
-![ADF Deployment Architecture](https://miro.medium.com/v2/resize:fit:1100/format:webp/1*UsUSpZ5DZ3SpraJAFl0TCg.png) 
+<img width="901" height="616" alt="image" src="https://github.com/user-attachments/assets/04e7270c-b55f-425a-9d86-786ec08e7b0f" />
 
 *Sample architecture diagram*
 
