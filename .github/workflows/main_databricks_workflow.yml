@@ -1,0 +1,511 @@
+name: Main_Databricks_Deployment_Workflow
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'deploy to'
+        type: string
+        required: true
+        default: 'dev'
+      install_libraries:
+          description: 'choose to install libraries or not'
+          required: false
+          type: boolean
+      databricks_code_deploy:
+          description: 'deploy code to databricks workspace'
+          required: false
+          type: boolean
+      databricks_notebook_deploy:
+          description: 'deploy specific notebooks to databricks workspace'
+          required: false
+          type: boolean
+      source_target_sync:
+        description: 'delete the files on databricks target that are not in the source folder'
+        type: boolean
+        required: false
+      source_folder:
+          description: 'Enter the source path(Local path) & use / for sub_path'
+          required: false
+          type: string
+      destionation_folder:
+          description: 'Enter the destination path(/Remote path) & use / at starting and for sub_path'
+          required: false
+          type: string
+      backup_workspace:
+          description: 'take backup of the workspace'
+          required: false
+          type: boolean
+jobs:
+  databricks_deploy:
+    runs-on: [ uhg-runner-m ]
+    environment: ${{ inputs.environment }}
+    env:
+      DATABRICKS_HOST: ${{ vars.URL }}
+      USERNAME: ${{ github.actor }}
+      NOTEBOOK_PATH: ${{ inputs.source_folder }}
+      REMOTE_PATH: ${{ inputs.destionation_folder }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_SP_TENANT_ID }}
+      ARM_CLIENT_ID: ${{ secrets.AZURE_SP_APPLICATION_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_SP_CLIENT_SECRET }}
+
+    steps:
+      - name: Pipeline run information
+        run: |
+          echo "This pipeline is triggered by ${{github.actor}}"
+          echo "Selected environment is ${{ inputs.environment }}"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@v0.220.0
+
+      - name: Create Databricks configuration for authentication
+        run: |
+          echo "[Default]" > ~/.databrickscfg
+          echo "host = ${{ vars.URL }}" >> ~/.databrickscfg
+          echo "azure_tenant_id = ${{ secrets.AZURE_SP_TENANT_ID }}" >> ~/.databrickscfg
+          echo "azure_client_id = ${{ secrets.AZURE_SP_APPLICATION_ID }}" >> ~/.databrickscfg
+          echo "azure_client_secret = ${{ secrets.AZURE_SP_CLIENT_SECRET }}" >> ~/.databrickscfg
+
+      - name: Backup databricks workspace on ${{ inputs.environment }}
+        if: inputs.backup_workspace
+        run: |
+          set -x
+          databricks auth profiles
+
+          # Variable to store the remote backup folder
+          remote_backup_folder="/notebooks_backup"
+          temp_backup_folder="temp-databricks-backup"
+
+          # create a temp backup folder
+          mkdir -p $temp_backup_folder
+
+          # export the remote folder to the local backup folder
+          databricks workspace export-dir --overwrite "$REMOTE_PATH" $temp_backup_folder
+
+          # Function to create a backup directory in Databricks workspace if it doesn't exist
+          create_databrick_directory() {
+            if ! databricks workspace list "$remote_backup_folder"; then
+              echo "Creating directory $remote_backup_folder"
+              databricks workspace mkdirs "$remote_backup_folder"
+            else
+              echo "Directory $remote_backup_folder already exists"
+            fi
+          }
+
+          # Create a backup directory in Databricks workspace if it doesn't exist
+          create_databrick_directory
+
+          # Only keep one backup in the remote backup folder which is created before new deployment
+          # Only delete the backup if one previous backup folder is already present in the remote backup folder
+          if [ $(databricks workspace list "$remote_backup_folder" | wc -l) -gt 1 ]; then
+            echo "Deleting the previous backup from the remote backup folder"
+            databricks workspace delete --recursive "$remote_backup_folder"
+          fi
+
+          # Remove hidden folders .github and .bin from root of the backup folder
+          ls -ltrh $local_directory
+          #find $local_directory -type d -name ".github|.bin" -exec rm -rf {} \;
+
+          # Sync the local backup folder to the remote backup folder
+          databricks sync $temp_backup_folder "$remote_backup_folder""$REMOTE_PATH"-$(date +%Y-%m-%d_%I:%M:%S_%p_%Z)
+
+          # delete temp backup folder in workspace
+          if databricks workspace list "/$temp_backup_folder"; then
+            databricks workspace delete --recursive "/$temp_backup_folder"
+          fi
+
+      - name: Sync and clean Databricks workspace on ${{ inputs.environment }}
+        if: inputs.source_target_sync
+        run: |
+          #!/bin/bash
+
+          # Define paths using the updated variable names
+          databricks_directory="$REMOTE_PATH" # Databricks workspace directory
+          local_directory="$NOTEBOOK_PATH" # Local directory path
+          temp_directory="./temp-databricks-notebooks" # Temporary directory for exported Databricks content
+
+          # Cleanup local directory path
+          # Remove .github, folders from the local directory
+          ls -ltrh $local_directory
+
+          # Function to create a directory in Databricks workspace if it doesn't exist
+          create_databrick_directory() {
+            if ! databricks workspace list "$databricks_directory"; then
+              echo "Creating directory $databricks_directory"
+              databricks workspace mkdirs "$databricks_directory"
+            else
+              echo "Directory $databricks_directory already exists"
+            fi
+          }
+
+          # Function to export notebooks from Databricks workspace to a local temporary directory
+          export_databricks_notebooks() {
+            if [ -d "$temp_directory" ]; then
+              # Need this to handle the case where the temp directory is not removed when
+              # this job is failed because of that the github runner have old directory
+              echo "Removing existing temporary directory..."
+              echo "for extra caution: in case github runner have old directory"
+              rm -rf "$temp_directory"
+            else
+              echo "Creating temporary directory..."
+              mkdir -p "$temp_directory"
+              databricks workspace export-dir "$databricks_directory" "$temp_directory" --overwrite
+            fi
+          }
+
+          # Function to delete files and directories from Databricks that don't exist locally
+          sync_and_clean() {
+              # Export Databricks content to the temp directory
+              create_databrick_directory
+              export_databricks_notebooks
+
+              # Create an associative array to track local files and directories
+              declare -A local_entities
+
+              # Populate array with local file and directory names
+              while IFS= read -r -d '' entity; do
+                  entity_path=${entity#$local_directory/}
+                  local_entities["$entity_path"]=1
+              done < <(find "$local_directory" -type f -print0)
+
+              while IFS= read -r -d '' entity; do
+                  entity_path=${entity#$local_directory/}
+                  local_entities["$entity_path"]=1
+              done < <(find "$local_directory" -type d -print0)
+
+              # Loop through each file in the Databricks temp directory
+              while IFS= read -r -d '' db_file; do
+                  relative_path=${db_file#$temp_directory/}
+                  if [ -z "${local_entities[$relative_path]}" ]; then
+                      echo "Attempting to delete $databricks_directory/$relative_path"
+                      if ! databricks workspace delete "$databricks_directory/$relative_path"; then
+                          # Attempt to remove any extension and try the deletion again
+                          modified_path="${relative_path%.*}"
+                          if [[ "$modified_path" != "$relative_path" ]]; then
+                              echo "Initial attempt failed. Trying without any extension for $databricks_directory/$modified_path"
+                              databricks workspace delete "$databricks_directory/$modified_path"
+                          fi
+                      fi
+                  fi
+              done < <(find "$temp_directory" -type f -print0)
+
+              # Loop through directories in Databricks temp directory in reverse order
+              while IFS= read -r -d '' db_dir; do
+                  if [ -d "$db_dir" ]; then
+                      relative_dir_path=${db_dir#$temp_directory/}
+                      # Ensure its a directory and not directly mapped in local_entities
+                      if [ -z "${local_entities[$relative_dir_path]}" ]; then
+                          echo "Attempting to delete directory $databricks_directory/$relative_dir_path"
+                          echo "Deleting directory $databricks_directory/$relative_dir_path because it does not exist locally"
+                          if ! databricks workspace delete --recursive "$databricks_directory/$relative_dir_path"; then
+                              echo "Failed to delete directory $databricks_directory/$relative_dir_path"
+                          fi
+                      fi
+                  fi
+              done < <(find "$temp_directory" -type d -print0 | sort -r)
+          }
+
+          # Main execution function
+          sync_and_clean
+
+          # Clean up the temporary directory
+          rm -rf "$temp_directory"
+
+      - name: Install Libraries on ${{ inputs.environment }}
+        if: inputs.install_libraries
+        run: |
+          #!/bin/bash
+
+          # databrics path where libraries are stored
+          DBX_LIBRARIES_REMOTE_PATH="dbfs:/FileStore"
+
+          # Function to check cluster status
+          check_cluster_status() {
+            cluster_id=${{ vars.CLUSTER_ID }}
+            databricks clusters get "$cluster_id" --output json | jq -r '.state'
+          }
+
+          # Fuction to wait for the cluster to be up
+          wait_for_cluster() {
+            while [[ "$(check_cluster_status)" != "RUNNING" ]]; do
+              echo "Waiting for the cluster to be up..."
+              sleep 10
+            done
+          }
+
+          # Check the cluster status and start the cluster if it is not running
+          if [[ "$(check_cluster_status)" == "TERMINATED" ]]; then
+            echo "Cluster is stopped. Starting the cluster..."
+            databricks clusters start "${{ vars.CLUSTER_ID }}"
+            wait_for_cluster
+          else
+            echo "Cluster is already running. Current state: $(check_cluster_status)"
+          fi
+
+          # Step 1: Initialize the array to hold libraries to upload
+          libraries_to_upload=()
+
+          # Step 2: Read the list of libraries from libraries.txt
+          line_count=0
+          while IFS= read -r library || [[ -n "$library" ]]
+          do
+            libraries_to_upload+=("$library")
+            line_count=$((line_count+1))
+            echo "Library $line_count: $library"
+          done < ${{ vars.DBX_LIBRARIES_PATH }}/libraries.txt
+
+          echo "total libraries to upload: $line_count"
+          echo "Libraries to upload: ${libraries_to_upload[@]}"
+
+          # Step 3: List the current libraries on the Databricks cluster
+          cluster_id=${{ vars.CLUSTER_ID }}
+
+          # Fetching the current libraries and formatting the output
+          current_libraries=$(databricks libraries all-cluster-statuses --output json | jq -r '.statuses[]? | .library_statuses[]? | select(.status == "INSTALLED") | .library.egg // empty' | awk -F':' '{ print $2}' | awk -F'/' '{print $3}')
+
+          echo "Current libraries on the cluster: $current_libraries"
+
+          # Convert current libraries to an array for easier handling
+          IFS=$'\n' current_libraries_arr=($current_libraries)
+
+          # initialize the flag to track if any library was updated
+          library_updated=0
+
+          # Step 4: Upload missing library files to the cluster and update configuration
+          for library in "${libraries_to_upload[@]}"
+          do
+            if [[ ! " ${current_libraries_arr[*]} " =~ " $library " ]]; then
+              echo "Uploading $library to the cluster..."
+              databricks fs cp --overwrite "${{ vars.DBX_LIBRARIES_PATH }}/$library" "$DBX_LIBRARIES_REMOTE_PATH/$library"
+
+              # Prepare the JSON payload to install the library
+              json_payload="{\"cluster_id\": \"$cluster_id\", \"libraries\": [{\"egg\": \"$DBX_LIBRARIES_REMOTE_PATH/$library\"}]}"
+
+              # Write the JSON payload to a temporary file
+              tmp_json_file=$(mktemp)
+              echo "$json_payload" > "$tmp_json_file"
+
+              cat $tmp_json_file
+
+              # Update the cluster configuration to include the new library using the JSON file
+              echo "Updating cluster configuration..."
+              databricks libraries install "$cluster_id" --json @"$tmp_json_file"
+
+              # Clean up the temporary file
+              rm "$tmp_json_file"
+
+              # Mark the flag to indicate that a library was updated
+              library_updated=1
+
+            else
+              echo "$library is already installed on the cluster."
+            fi
+          done
+
+          # Restart the cluster only if a library was updated
+          if [[ $library_updated -eq 1 ]]; then
+            echo "Restarting the cluster..."
+            databricks clusters restart "$cluster_id"
+            wait_for_cluster # Ensure this function waits for the cluster to restart
+          else
+            echo "No libraries were updated. Skipping the cluster restart."
+          fi
+        shell: bash
+
+      - name: Deploy/Sync Complete folder to Databricks workspace on ${{ inputs.environment }}
+        if: inputs.databricks_code_deploy
+        run: |
+            set -x
+            databricks auth profiles
+
+            # Define the temporary directory
+            TEMP_DIR=$(mktemp -d)
+
+            # Define an array of paths to check for existence
+            paths_to_check=(
+              "$NOTEBOOK_PATH/databricks"
+              "$NOTEBOOK_PATH/.bin"
+              "$NOTEBOOK_PATH/*.yml"
+              "$NOTEBOOK_PATH/*.yaml"
+              "$NOTEBOOK_PATH/.github"
+              "$NOTEBOOK_PATH/.git"
+              "$NOTEBOOK_PATH/.gitignore"
+              "$NOTEBOOK_PATH/*.md"
+              "$NOTEBOOK_PATH/databricks_cli*"
+              "$NOTEBOOK_PATH/temp-databricks-backup"
+            )
+
+            # Check if any of the paths exist
+            should_rsync=false
+            for path in "${paths_to_check[@]}"; do
+              if ls $path 1> /dev/null 2>&1; then
+                should_rsync=true
+                break
+              fi
+            done
+
+            # Perform rsync only if any of the paths exist
+            if $should_rsync; then
+              # Sync the local folder to the temporary directory, excluding unwanted files and directories
+              rsync -av --exclude='databricks' --exclude='databricks_cli*' --exclude='.bin' --exclude='*.yml' --exclude='*.yaml' --exclude='.github' --exclude='.git' --exclude='.gitignore' --exclude='*.md' --exclude='temp-databricks-backup' "$NOTEBOOK_PATH/" "$TEMP_DIR/"
+              databricks sync "$TEMP_DIR" "$REMOTE_PATH"
+            else
+              # Sync the local folder to the remote folder (Actual deployment step)
+              databricks sync "$NOTEBOOK_PATH" "$REMOTE_PATH"
+            fi
+
+            # Clean up the temporary directory
+            rm -rf "$TEMP_DIR"
+
+        env:
+          ARM_TENANT_ID: ${{ secrets.AZURE_SP_TENANT_ID }}
+          ARM_CLIENT_ID: ${{ secrets.AZURE_SP_APPLICATION_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_SP_CLIENT_SECRET }}
+
+      - name: Deploy Specific Notebooks to Databricks workspace on ${{ inputs.environment }}
+        if: inputs.databricks_notebook_deploy
+        run: |
+            mkdir backupfolder
+
+            dbx_deploy() {
+              filepath=${path%.*}
+              target_path=$filepath
+            
+              echo "################ Deploying $path file ################"
+            
+              # Handle the folder name replacement
+              if [[ $target_path == IDM_Databricks* ]]; then
+                target_path="IDM${target_path#IDM_Databricks}"
+              fi
+            
+              if [[ $(databricks workspace ls /$target_path) == $(basename $target_path) ]]; then
+                dir=$(dirname $path)
+                mv $path $filepath
+                mkdir -p backupfolder/$dir
+                databricks workspace export /$target_path backupfolder/$dir
+                databricks workspace delete /$target_path
+                databricks workspace import --overwrite --language $1 "/$target_path"
+              else
+                dir=$(dirname $path)
+                mv $path $filepath
+                databricks workspace mkdirs /$(dirname $target_path)
+                databricks workspace import --overwrite --language $1 "/$target_path"
+              fi
+              
+              echo "################ Deployment of $path file is done ################"
+            }
+            
+            dbx_deploy_dir() {
+              target_path=$path
+            
+              echo "################ Deploying $path directory ################"
+            
+              # Handle the folder name replacement
+              if [[ $target_path == IDM_Databricks* ]]; then
+                target_path="IDM${target_path#IDM_Databricks}"
+              fi
+            
+              if databricks workspace ls /$target_path; then
+                mkdir -p backupfolder/$path
+                databricks workspace export_dir /$target_path backupfolder/$path
+                databricks workspace delete -r /$target_path
+                databricks workspace import_dir --overwrite "/${target_path}"
+              else
+                databricks workspace import_dir --overwrite "/${target_path}"
+              fi
+              
+              echo "################ Deployment of $path directory is done ################"
+            }
+            
+            for path in $NOTEBOOK_PATH
+            do
+              if [[ -f $path ]]; then
+                case $path in
+                  *.py|*.ipynb|*.html)
+                    dbx_deploy PYTHON
+                    ;;
+                  *.sql)
+                    dbx_deploy SQL
+                    ;;
+                  *.r|*.R)
+                    dbx_deploy R
+                    ;;
+                  *.scala|*.sc)
+                    dbx_deploy SCALA
+                    ;;
+                  *)
+                    echo "$path is not a compatible file format."
+                    echo $path >> error.txt
+                    ;;
+                esac
+              elif [[ -d $path ]]; then
+                dbx_deploy_dir
+              else
+                echo "$path is neither an available directory nor an available file." >> error.txt
+                echo "Please recheck your inputs" >> error.txt
+                echo $path
+              fi
+            done
+            
+            rm -rf locations.txt backupfolder
+        env:
+          ARM_TENANT_ID: ${{ secrets.AZURE_SP_TENANT_ID }}
+          ARM_CLIENT_ID: ${{ secrets.AZURE_SP_APPLICATION_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_SP_CLIENT_SECRET }}
+
+      - name: Error Handling
+        run: |
+          if [ -f error.txt ]
+          then
+            echo "Error occured while deploying the notebooks"
+            cat error.txt
+            exit 1
+          else
+            echo "All notebooks are deployed successfully"
+          fi
+      
+      - name: Add Summary if Success
+        if: success()
+        run: |
+          # Create the summary content
+          {
+            echo '### Activity Status Summary'
+            echo ''
+            echo ':rocket: **Deployment to Databricks workspace is completed successfully** :rocket:'
+            echo ''
+            echo '#### Notebooks Deployed:'
+            echo '<ul>'
+            for notebook in $NOTEBOOK_PATH; do
+              echo "<li>$notebook</li>"
+            done
+            echo '</ul>'
+            echo ''
+            echo 'Please check the Databricks workspace for the deployed notebooks.'
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: Add Summary if failure
+        if: failure()
+        run: |
+          # Create the summary content
+          {
+            echo '### Activity Status Summary'
+            echo ''
+            echo ':red_circle: **Deployment to Databricks workspace failed** :red_circle:'
+            echo ''
+            echo '#### Notebooks Attempted to Deploy:'
+            echo '<ul>'
+            for notebook in $NOTEBOOK_PATH; do
+              echo "<li>$notebook</li>"
+            done
+            echo '</ul>'
+            echo ''
+            echo 'Reason for failure: '
+            echo '<ul>'
+            cat error.txt
+            echo '</ul>'
+            echo ''
+            echo "Please check the logs for more details"
+          } >> $GITHUB_STEP_SUMMARY
