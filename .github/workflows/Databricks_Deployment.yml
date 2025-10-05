@@ -13,11 +13,11 @@ on:
 
   workflow_dispatch:
     inputs:
-      environment:
+      environment:  
         description: 'deploy to'
         type: environment
         required: true
-        default: 'dev'
+        #default: 'dev'
       # destionation_folder:
       #     description: 'Enter the destination folder path(/Remote path) & use / at starting and for sub_path'
       #     required: false
