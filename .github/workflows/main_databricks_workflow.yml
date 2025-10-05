@@ -14,10 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
-      DATABRICKS_HOST: ${{ vars.URL }}
-      ARM_TENANT_ID: ${{ secrets.AZURE_SP_TENANT_ID }}
-      ARM_CLIENT_ID: ${{ secrets.AZURE_SP_APPLICATION_ID }}
-      ARM_CLIENT_SECRET: ${{ secrets.AZURE_SP_CLIENT_SECRET }}
+      databrickshost: ${{ vars.URL }}
+      subscriptionIdVariable : ${{ vars.ARM_SUBSCRIPTION_ID }}
+      clientIdVariable: ${{ secrets.ARM_CLIENT_ID}}
+      clientSecretVariable: ${{ secrets.ARM_CLIENT_SECRET}}
+      tenantIdVariable : ${{ vars.ARM_TENANT_ID }}
+      rsg : ${{ vars.RSG }}
 
     steps:
       - name: Checkout repository
@@ -30,9 +32,9 @@ jobs:
         run: |
           echo "[DEFAULT]" > ~/.databrickscfg
           echo "host = ${{ vars.URL }}" >> ~/.databrickscfg
-          echo "azure_tenant_id = ${{ secrets.AZURE_SP_TENANT_ID }}" >> ~/.databrickscfg
-          echo "azure_client_id = ${{ secrets.AZURE_SP_APPLICATION_ID }}" >> ~/.databrickscfg
-          echo "azure_client_secret = ${{ secrets.AZURE_SP_CLIENT_SECRET }}" >> ~/.databrickscfg
+          echo "azure_tenant_id = ${{ vars.ARM_TENANT_ID }}" >> ~/.databrickscfg
+          echo "azure_client_id = ${{ secrets.ARM_CLIENT_ID}}" >> ~/.databrickscfg
+          echo "azure_client_secret = ${{ secrets.ARM_CLIENT_SECRET}}" >> ~/.databrickscfg
 
       - name: Deploy Databricks Asset Bundle
         run: |
