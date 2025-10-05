@@ -15,12 +15,9 @@ on:
     inputs:
       environment:
         description: 'deploy to'
-        type: choice
-        options:
-          - 'dev'
-          - 'stage'
-          - 'prod'
+        type: environment
         required: true
+        default: 'dev'
       # destionation_folder:
       #     description: 'Enter the destination folder path(/Remote path) & use / at starting and for sub_path'
       #     required: false
@@ -51,7 +48,8 @@ jobs:
     secrets: inherit
     
   code_deploy_to_databricks:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && ( github.event.inputs.databricks_code_deploy == 'true' || github.event.inputs.databricks_notebook_deploy == 'true' )
+
     uses: Aman-PN/ADF_Deployment-PoC/.github/workflows/main_databricks_workflow.yml@develop
 
     with:
