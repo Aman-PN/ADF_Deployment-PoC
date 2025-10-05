@@ -38,7 +38,7 @@ jobs:
 
       - name: Deploy Databricks Asset Bundle
         run: |
-          databricks bundle deploy --environment ${{ inputs.environment }}
+          databricks bundle deploy --target ${{ inputs.environment }}
 
       - name: Add Summary if Success
         if: success()
