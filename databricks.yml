@@ -9,8 +9,3 @@ resources:
   # jobs:
   #   ADB_JOB:
   #     job_settings: ADB-PoC/jobs/ADB_JOB.yaml
-
-environments:
-  dev:
-    workspace:
-      host: https://adb-3024873674148212.12.azuredatabricks.net/
