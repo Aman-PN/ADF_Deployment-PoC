@@ -57,6 +57,7 @@ jobs:
       source_target_sync: true
       databricks_code_deploy: true
     secrets: inherit
+    
   stage_code_deploy_to_databricks:
     if: github.event_name == 'push' && github.ref == 'refs/heads/stage'
 
