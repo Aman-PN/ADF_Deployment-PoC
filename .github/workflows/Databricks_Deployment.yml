@@ -13,14 +13,11 @@ on:
 
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'environment'
-        type: choice
-        options:
-          - 'dev'
-          - 'stage'
-          - 'prod'
+      environment:  
+        description: 'deploy to'
+        type: environment
         required: true
+        default: 'dev'
       # destionation_folder:
       #     description: 'Enter the destination folder path(/Remote path) & use / at starting and for sub_path'
       #     required: false
@@ -54,6 +51,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && ( github.event.inputs.databricks_code_deploy == 'true' || github.event.inputs.databricks_notebook_deploy == 'true' )
 
     uses: Aman-PN/ADF_Deployment-PoC/.github/workflows/main_databricks_workflow.yml@develop
+
     with:
       environment: ${{ inputs.environment }}
       # destionation_folder: '/batch'
