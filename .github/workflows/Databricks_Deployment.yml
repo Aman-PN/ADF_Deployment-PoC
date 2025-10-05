@@ -48,8 +48,7 @@ jobs:
     secrets: inherit
     
   code_deploy_to_databricks:
-    if: github.event_name == 'workflow_dispatch' && ( github.event.inputs.databricks_code_deploy == 'true' || github.event.inputs.databricks_notebook_deploy == 'true' )
-
+    if: github.event_name == 'workflow_dispatch'
     uses: Aman-PN/ADF_Deployment-PoC/.github/workflows/main_databricks_workflow.yml@develop
 
     with:
