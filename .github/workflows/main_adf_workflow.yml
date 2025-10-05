@@ -1,4 +1,4 @@
-name: Main_ADF_Workflow
+name: Main_ADF_Deployment_Workflow
 on:
   workflow_call:
     inputs:
