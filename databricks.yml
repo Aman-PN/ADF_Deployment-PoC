@@ -4,12 +4,12 @@ bundle:
 resources:
   notebooks:
     ADB_Notebook:
-      path: notebooks/ADB_Notebook.py
+      path: ADB-PoC/notebooks/ADB_Notebook.py
       workspace_path: /Workspace/Shared/ADB_Notebook.py
 
   jobs:
     ADB_JOB:
-      job_settings: jobs/ADB_JOB.yml
+      job_settings: ADB-PoC/jobs/ADB_JOB.yml
 
 # environments:
 #   prod:
