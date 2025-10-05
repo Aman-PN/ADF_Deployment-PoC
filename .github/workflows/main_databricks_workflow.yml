@@ -4,9 +4,10 @@ on:
   workflow_call:
     inputs:
       environment:
-        description: 'environment'
-        required: true
+        description: 'Target deployment environment (dev, prod, etc)'
         type: string
+        required: true
+        default: 'dev'
 
 jobs:
   deploy_databricks_bundle:
