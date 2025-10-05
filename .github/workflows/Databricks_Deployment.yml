@@ -18,26 +18,11 @@ on:
         type: environment
         required: true
         default: 'dev'
-      databricks_code_deploy:
-          description: 'deploy code to databricks workspace'
-          required: false
-          type: boolean
-          default: false
-      databricks_notebook_deploy:
-          description: 'deploy specific notebooks to databricks workspace. If databricks_code_deploy is selected then this should not be selected.'
-          required: false
-          type: boolean
-          default: false
-      source_folder:
-          description: 'Enter the source folder path(Local path) & use / for sub_path'
-          required: false
-          type: string
-          default: '.'
-      destionation_folder:
-          description: 'Enter the destination folder path(/Remote path) & use / at starting and for sub_path'
-          required: false
-          type: string
-          default: '/batch'
+      # destionation_folder:
+      #     description: 'Enter the destination folder path(/Remote path) & use / at starting and for sub_path'
+      #     required: false
+      #     type: string
+      #     default: '/batch'
 
 permissions:
   contents: read
@@ -50,12 +35,7 @@ jobs:
     uses: Aman-PN/ADF_Deployment-PoC/.github/workflows/main_databricks_workflow.yml@develop
     with:
       environment: dev
-      source_folder: .
-      destionation_folder: '/batch'
-      backup_workspace: false
-      install_libraries: false
-      source_target_sync: true
-      databricks_code_deploy: true
+      # destionation_folder: '/batch'
     secrets: inherit
     
   stage_code_deploy_to_databricks:
@@ -64,12 +44,7 @@ jobs:
     uses: Aman-PN/ADF_Deployment-PoC/.github/workflows/main_databricks_workflow.yml@develop
     with:
       environment: stage
-      source_folder: .
-      destionation_folder: '/batch'
-      install_libraries: false
-      backup_workspace: false
-      source_target_sync: true
-      databricks_code_deploy: true
+      # destionation_folder: '/batch'
     secrets: inherit
     
   code_deploy_to_databricks:
@@ -79,10 +54,5 @@ jobs:
 
     with:
       environment: ${{ inputs.environment }}
-      source_folder: ${{ inputs.source_folder }}
-      destionation_folder: ${{ inputs.destionation_folder }}
-      databricks_code_deploy: ${{ inputs.databricks_code_deploy }}
-      databricks_notebook_deploy: ${{ inputs.databricks_notebook_deploy }}
-      backup_workspace: false
-
+      # destionation_folder: '/batch'
     secrets: inherit
