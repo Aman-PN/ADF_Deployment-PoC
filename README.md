@@ -5,8 +5,8 @@ A Proof of Concept implementation for automated Azure Data Factory pipeline depl
 
 ## 📌 Overview
 This solution demonstrates:
-- Automated ARM template deployment for ADF pipelines
-- Environment-specific configuration management (Stage/Dev/Prod)
+- Automated deployment of ADF pipelines using ARM templates
+- Environment-specific configuration management (Dev, Stage, Prod)
 - GitHub Actions-powered CI/CD pipeline
 - Infrastructure-as-Code (IaC) implementation
 
@@ -16,7 +16,7 @@ This solution demonstrates:
 
 ## ✨ Features
 - **Multi-stage Deployments**
-  - Stage → Dev → Prod promotion workflow
+  - Dev → Stage → Prod promotion workflow
   - Environment-specific parameter injection
   - Automated validation gates
 
@@ -40,10 +40,13 @@ This solution demonstrates:
 ## 🚀 Getting Started
 
 ### 1. Repository Setup
+1. Clone the repository:
 ```bash
 git clone https://github.com/Aman-PN/ADF_Deployment-PoC.git
 cd ADF_Deployment-PoC
 ```
+2. Set up your Azure environment and create the necessary resources.
+3. Configure your GitHub repository settings to enable GitHub Actions.
 
 ### 2. GitHub Secrets Setup
 Configure these secrets in your repo settings:
@@ -63,11 +66,8 @@ on:
   workflow_dispatch:
 ```
 
-### Deployment Steps
-1. **Validate Templates** - ARM template syntax check
-2. **Stage Deployment** - Initial validation environment
-3. **Dev Promotion** - Manual approval gate
-4. **Prod Deployment** - Final production rollout
+### Usage
+To deploy your ADF pipelines, push changes to the main branch or create a pull request. The GitHub Actions workflow will automatically trigger and deploy your changes to the specified environment.
 
 ## 🔧 Customization
 Modify `.github/workflows/deploy.yml` to:
