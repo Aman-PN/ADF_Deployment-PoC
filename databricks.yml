@@ -1,0 +1,17 @@
+bundle:
+  name: ADB-POC
+
+resources:
+  notebooks:
+    ADB_Notebook:
+      path: notebooks/ADB_Notebook.py
+      workspace_path: /Workspace/Shared/ADB_Notebook.py
+
+  jobs:
+    ADB_JOB:
+      job_settings: jobs/ADB_JOB.yml
+
+# environments:
+#   prod:
+#     workspace:
+#       host: https://<your-databricks-instance>
