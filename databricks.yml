@@ -1,14 +1,13 @@
 bundle:
-  name: ADB-POC
+  name: adf-poc-bundle
 
 resources:
   notebooks:
-    ADB_Notebook:
-      path: ADB-PoC/notebooks/ADB_Notebook.py
-      workspace_path: /Workspace/Shared/ADB_Notebook.py
-
+    adb_notebook:
+      path: ADB-PoC/notebooks/ADB_Notebook.ipynb
+      workspace_path: /Workspace/Shared/ADB_Notebook.ipynb
   jobs:
-    ADB_JOB:
+    adb_job:
       job_settings: ADB-PoC/jobs/ADB_JOB.yml
 
 # environments:
