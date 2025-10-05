@@ -15,9 +15,12 @@ on:
     inputs:
       environment:
         description: 'deploy to'
-        type: environment
+        type: choice
+        options:
+          - 'dev'
+          - 'stage'
+          - 'prod'
         required: true
-        default: 'dev'
       # destionation_folder:
       #     description: 'Enter the destination folder path(/Remote path) & use / at starting and for sub_path'
       #     required: false
