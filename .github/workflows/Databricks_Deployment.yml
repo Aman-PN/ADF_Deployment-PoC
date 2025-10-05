@@ -1,4 +1,4 @@
-name: Deploy_to_Databricks
+name: Databricks_Deployment_Workflow
 
 on:
   push:
