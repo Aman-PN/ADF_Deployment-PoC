@@ -2,7 +2,7 @@ name: ADB_JOB
 tasks:
   - task_key: Hello_world
     notebook_task:
-      notebook_path: /Workspace/Shared/ADB_Notebook.ipynb
+      notebook_path: /Workspace/Shared/ADB_Notebook_updated.ipynb
     existing_cluster_id: 1005-180436-io75gj41
 queue:
   enabled: true

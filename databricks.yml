@@ -8,7 +8,7 @@ resources:
       workspace_path: /Workspace/Shared/ADB_Notebook.ipynb
   jobs:
     ADB_JOB:
-      job_settings: ./ADB-PoC/jobs/ADB_JOB.yml
+      job_settings: ADB-PoC/jobs/ADB_JOB.yml
 
 environments:
   dev:
