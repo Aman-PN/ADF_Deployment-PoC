@@ -1,5 +1,7 @@
 bundle:
   name: adf-poc-bundle
+  include:
+    - ADB-PoC/**
 
 resources:
   notebooks:
