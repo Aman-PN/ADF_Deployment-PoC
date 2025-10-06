@@ -8,10 +8,10 @@ on:
     paths:
       - "ADB-PoC/**"
 
-    paths-ignore:
-      - '.github/**'
-      - '**/*.md'
-      - '**/*.txt'
+    # paths-ignore:
+    #   - '.github/**'
+    #   - '**/*.md'
+    #   - '**/*.txt'
 
   workflow_dispatch:
     paths:
