@@ -44,6 +44,7 @@ jobs:
       - name: Deploy Databricks Asset Bundle
         run: |
           databricks bundle deploy --target ${{ inputs.environment }}
+        working-directory: ./ADB-PoC
 
       - name: Add Summary if Success
         if: success()
