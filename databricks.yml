@@ -9,7 +9,7 @@ resources:
       path: ADB-PoC/notebooks/ADB_Notebook.ipynb
       workspace_path: /Workspace/Shared/ADB_Notebook.ipynb
 
-environments:
-  dev:
-    workspace:
-      host: https://adb-3024873674148212.12.azuredatabricks.net/
+# environments:
+#   dev:
+#     workspace:
+#       host: https://adb-3024873674148212.12.azuredatabricks.net/
