@@ -1,8 +1,6 @@
 bundle:
   name: adf-poc-bundle
-  include:
-    - ADB-PoC/**
-
+  
 resources:
   notebooks:
     adb_notebook:
@@ -13,3 +11,4 @@ environments:
   dev:
     workspace:
       host: https://adb-3024873674148212.12.azuredatabricks.net/
+      root_path: /ADB-PoC
