@@ -1,20 +1,20 @@
 bundle:
   name: adf-poc-bundle
   include:
-    - ADB-PoC/**
-  ignore:
-    - .github/**
+    name: adf-poc-bundle
+    include:
+      - ADB-PoC/**
     - README.md
     - poc_adf/**
-    - .bin
-    - .gitignore
-
-resources:
+    notebooks:
+      adb_notebook:
+        path: ADB-PoC/notebooks/ADB_Notebook.ipynb
+        workspace_path: /batch/ADB-PoC/notebooks/ADB_Notebook.ipynb
   notebooks:
     adb_notebook:
-      path: ADB-PoC/notebooks/ADB_Notebook.ipynb
-      workspace_path: /batch/ADB-PoC/ADB_Notebook.ipynb
-
+    dev:
+      workspace:
+        host: https://adb-3024873674148212.12.azuredatabricks.net/
 environments:
   dev:
     workspace:
