@@ -13,7 +13,7 @@ resources:
   notebooks:
     adb_notebook:
       path: ADB-PoC/notebooks/ADB_Notebook.ipynb
-  workspace_path: /batch/ADB_Notebook.ipynb
+      workspace_path: /batch/ADB-PoC/ADB_Notebook.ipynb
 
 environments:
   dev:
