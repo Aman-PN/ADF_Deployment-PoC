@@ -8,6 +8,11 @@ on:
         type: string
         required: true
         default: 'dev'
+      destionation_folder:
+          description: 'Enter the destination folder path(/Remote path) & use / at starting and for sub_path'
+          required: false
+          type: string
+          default: '/batch'
 
 jobs:
   deploy_databricks_bundle:
