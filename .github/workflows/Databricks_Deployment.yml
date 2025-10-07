@@ -5,13 +5,17 @@ on:
     branches:
       - develop
       - stage
+    paths:
+      - "ADB-PoC/**"
 
-    paths-ignore:
-      - '.github/**'
-      - '**/*.md'
-      - '**/*.txt'
+    # paths-ignore:
+    #   - '.github/**'
+    #   - '**/*.md'
+    #   - '**/*.txt'
 
   workflow_dispatch:
+    paths:
+      - "ADB-PoC/**"
     inputs:
       environment:
         description: 'deploy to'
@@ -35,7 +39,7 @@ jobs:
     uses: Aman-PN/ADF_Deployment-PoC/.github/workflows/main_databricks_workflow.yml@develop
     with:
       environment: dev
-      # destionation_folder: '/batch'
+      #destionation_folder: '/batch'
     secrets: inherit
     
   stage_code_deploy_to_databricks:
@@ -44,7 +48,7 @@ jobs:
     uses: Aman-PN/ADF_Deployment-PoC/.github/workflows/main_databricks_workflow.yml@develop
     with:
       environment: stage
-      # destionation_folder: '/batch'
+      #destionation_folder: '/batch'
     secrets: inherit
     
   code_deploy_to_databricks:
@@ -52,4 +56,5 @@ jobs:
     uses: Aman-PN/ADF_Deployment-PoC/.github/workflows/main_databricks_workflow.yml@develop
     with:
       environment: ${{ inputs.environment }}
+      #destionation_folder: '/batch'
     secrets: inherit
