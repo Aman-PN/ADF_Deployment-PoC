@@ -1,0 +1,10 @@
+{
+	"name": "dev_keyvault_LS",
+	"properties": {
+		"annotations": [],
+		"type": "AzureKeyVault",
+		"typeProperties": {
+			"baseUrl": "https://devenvpoc-kv.vault.azure.net/"
+		}
+	}
+}
