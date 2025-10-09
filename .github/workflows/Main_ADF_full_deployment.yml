@@ -84,6 +84,7 @@ jobs:
           touch params.json
           pwd
           cat <<EOT > replaceparams.py
+
           """
               This program finds and replaces source environment variables with
               target environment variables
@@ -148,7 +149,7 @@ jobs:
               # args[2:] = function args : (*unpacked)
             globals()[args[1]](*args[2:])
           EOT
-
+          
           cat <<EOT > adfutility.py
           import json
           import sys
