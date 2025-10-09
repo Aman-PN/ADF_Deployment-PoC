@@ -1,0 +1,18 @@
+{
+	"name": "dev_adls_LS",
+	"properties": {
+		"annotations": [],
+		"type": "AzureBlobFS",
+		"typeProperties": {
+			"url": "https://adlsenvdev.dfs.core.windows.net",
+			"accountKey": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "dev_keyvault_LS",
+					"type": "LinkedServiceReference"
+				},
+				"secretName": "Adls-dev-access-key"
+			}
+		}
+	}
+}
