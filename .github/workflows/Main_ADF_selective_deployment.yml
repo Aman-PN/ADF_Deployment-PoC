@@ -1,10 +1,22 @@
-name: ADF_full_deployment
+name: Main_ADF_selective_deployment
 on:
   workflow_call:
     inputs:
       environment:
         description: 'environment'
         required: true
+        type: string
+      Pipelines:
+        description: 'Provide the details of the pipelines to be deployed'
+        type: string
+      LinkedServices:
+        description: 'Provide the details of the linked services to be deployed'
+        type: string
+      Datasets:
+        description: 'Provide the details of the datasets to be deployed'
+        type: string
+      Triggers:
+        description: 'Provide the details of the triggers to be deployed'
         type: string
       Triggers-status:
         description: 'Provide the status of the triggers to be deployed'
@@ -43,7 +55,7 @@ jobs:
           run: |
             echo "Approval request sent.."
 
-  full_adf_deployment:
+  centralized_selective_adf_deployment:
     needs:
       - Approval-Request
       - User-Varification
@@ -60,30 +72,27 @@ jobs:
       adf : ${{ vars.ADF }}
       arm_folder : ${{ vars.ARM_FOLDER }}
 
-
     steps:
       - name: Pipeline run information
         run: |
-          echo "This pipeline is triggered by ${{github.actor}}"
           echo "Selected environment is ${{ inputs.environment }}"
-          rm -rf ${{ vars.ARM_FOLDER }}/*
 
       - name: Checkout
         uses: actions/checkout@v4
         #with:
-          ##ref: ${{ vars.ADFBRANCH }}
+          #ref: ${{ vars.ADFBRANCH }}
           ### path: ${{ vars.ARM_FOLDER }}
 
       - name: Set up Python
         uses: actions/setup-python@v5.6.0
         with:
-          python-version: '3.12' # Change to your Python version if needed
+          python-version: '3.12.3' # Change to your Python version if needed
 
       - name: create replace parameters python script
         run: |
           touch params.json
-
-          cat <<EOT >> replaceparams.py
+          pwd
+          cat <<EOT > replaceparams.py
           """
               This program finds and replaces source environment variables with
               target environment variables
@@ -149,7 +158,7 @@ jobs:
             globals()[args[1]](*args[2:])
           EOT
 
-          cat <<EOT >> adfutility.py
+          cat <<EOT > adfutility.py
           import json
           import sys
 
@@ -183,11 +192,9 @@ jobs:
               globals()[sys.argv[1]](*sys.argv[2:])
           EOT
 
-
       - name: replace parameters
         run : |
           echo "${{ vars.PARAMETERIZATION }}" > parameters.txt
-          cat parameters.txt
           python replaceparams.py prepareFiles ${{ vars.ARM_FOLDER }} parameters.txt
 
       - name: 'Az Login'
@@ -201,6 +208,7 @@ jobs:
           az datafactory trigger list --factory-name "${{vars.ADF}}" --resource-group "${{vars.RSG}}" --query "[?properties.runtimeState=='Started'].name" -o tsv > triggers.txt
           #az datafactory trigger list --factory-name "${{vars.ADF}}" --resource-group "${{vars.RSG}}" --query "[?properties.runtimeState=='Stopped'].name" -o tsv > stopped_triggers.txt
 
+
       - name: 'stop triggers'
         continue-on-error: true
         run : |
@@ -211,10 +219,10 @@ jobs:
           done
 
       - name: 'linked service deployment'
+        if: ${{ inputs.LinkedServices  != null }}
         run : |
-          set -x
-          linkedservices=`find ${{ vars.ARM_FOLDER }}/linkedService/. -type f -name "*.json" -exec awk 'NR==2 && /"name":/ {gsub(/[",]/, "", $2); print $2}' {} \; | xargs echo`
-          for linkedService in $linkedservices;
+ 
+          for linkedService in ${{inputs.LinkedServices}};
           do
             ls
             echo " starting"
@@ -224,9 +232,8 @@ jobs:
             lsname=$(cat ls.txt)
             python adfutility.py getfile "${{ vars.ARM_FOLDER }}/linkedService/$linkedService.json" "${{ vars.ARM_FOLDER }}/linkedService/$lsname.json"
             echo "Creating $lsname linked service"
-            set -x
             az datafactory linked-service create --factory-name "$adf" --name "$lsname" --properties "${{ vars.ARM_FOLDER }}/linkedService/$lsname.json" --resource-group "$rsg" --output table
-            set +x
+
             if [ $? -eq 0 ];
             then
               echo "Created $lsname linkedService successfully"
@@ -236,10 +243,9 @@ jobs:
           done
 
       - name: 'dataset deployment'
+        if: ${{ inputs.Datasets  != null }}
         run : |
-          set -x
-          datasets=`find ${{ vars.ARM_FOLDER }}/dataset/. -type f -name "*.json" -exec awk 'NR==2 && /"name":/ {gsub(/[",]/, "", $2); print $2}' {} \; | xargs echo`
-          for dataset in $datasets;
+          for dataset in ${{inputs.Datasets}};
           do
             python adfutility.py getname "${{ vars.ARM_FOLDER }}/dataset/$dataset.json">ds.txt
             dsname=$(cat ds.txt)
@@ -256,10 +262,9 @@ jobs:
           done
 
       - name: 'pipeline service deployment'
+        if: ${{ inputs.Pipelines  != null }}
         run : |
-          set -x
-          pipelines=`find ${{ vars.ARM_FOLDER }}/pipeline/. -type f -name "*.json" -exec awk 'NR==2 && /"name":/ {gsub(/[",]/, "", $2); print $2}' {} \; | xargs echo`
-          for pipeline in $pipelines;
+          for pipeline in ${{inputs.Pipelines}};
           do
             echo "Creating $pipeline pipeline"
             python adfutility.py getname "${{ vars.ARM_FOLDER }}/pipeline/$pipeline.json">pipeline.txt
@@ -277,12 +282,11 @@ jobs:
           done
 
       - name: 'triggers deployment'
+        if: ${{ inputs.Triggers != null }}
         run : |
-          set -x
-          idmtriggers=`find ${{ vars.ARM_FOLDER }}/trigger/. -type f -name "*.json" -exec awk 'NR==2 && /"name":/ {gsub(/[",]/, "", $2); print $2}' {} \; | xargs echo`
-          for trigger in $idmtriggers;
+          for trigger in ${{inputs.Triggers}};
           do
-            echo "Creating $trigger adf trigger"
+            echo "Creating $trigger trigger"
             python adfutility.py getname "${{ vars.ARM_FOLDER }}/trigger/$trigger.json">trigger.txt
             triggername=$(cat trigger.txt)
             python adfutility.py getfile "${{ vars.ARM_FOLDER }}/trigger/$trigger.json" "${{ vars.ARM_FOLDER }}/trigger/${triggername}duprop.json"
@@ -296,10 +300,10 @@ jobs:
           done
 
       - name: 'new triggers status'
+        if: ${{ inputs.Triggers != null }}
         run: |
           if [ ${{inputs.Triggers-status}} == "Started" ]; then
-          idmtriggers=`find ${{ vars.ARM_FOLDER }}/trigger/. -type f -name "*.json" -exec awk 'NR==2 && /"name":/ {gsub(/[",]/, "", $2); print $2}' {} \; | xargs echo`
-            for trigger in $idmtriggers
+            for trigger in ${{inputs.Triggers}}
             do
               if [ $(grep -c "$trigger" triggers.txt) -eq 0 ]; then
                 echo $trigger >> triggers.txt
@@ -320,4 +324,6 @@ jobs:
             echo "Started $trigger trigger"
           done
 
-          rm -rf triggers.txt
+      - name: 'cleanup'
+        run: |
+          rm -rf triggers.txt adfutility.py replaceparams.py params.json
