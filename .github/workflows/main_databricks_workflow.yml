@@ -1,0 +1,58 @@
+name: Databricks Asset Bundle Deployment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target deployment environment (dev, prod, etc)'
+        type: string
+        required: true
+        default: 'dev'
+      # destionation_folder:
+      #     description: 'Enter the destination folder path(/Remote path) & use / at starting and for sub_path'
+      #     required: false
+      #     type: string
+      #     default: '/batch'
+
+jobs:
+  deploy_databricks_bundle:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      databrickshost: ${{ vars.URL }}
+      subscriptionIdVariable : ${{ vars.ARM_SUBSCRIPTION_ID }}
+      clientIdVariable: ${{ secrets.ARM_CLIENT_ID}}
+      clientSecretVariable: ${{ secrets.ARM_CLIENT_SECRET}}
+      tenantIdVariable : ${{ vars.ARM_TENANT_ID }}
+      rsg : ${{ vars.RSG }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Databricks CLI
+        uses: databricks/setup-cli@v0.220.0
+
+      - name: Configure Databricks CLI authentication
+        run: |
+          echo "[DEFAULT]" > ~/.databrickscfg
+          echo "host = ${{ vars.URL }}" >> ~/.databrickscfg
+          echo "azure_tenant_id = ${{ vars.ARM_TENANT_ID }}" >> ~/.databrickscfg
+          echo "azure_client_id = ${{ secrets.ARM_CLIENT_ID}}" >> ~/.databrickscfg
+          echo "azure_client_secret = ${{ secrets.ARM_CLIENT_SECRET}}" >> ~/.databrickscfg
+
+      - name: Deploy Databricks Asset Bundle
+        run: |
+          databricks bundle deploy --target ${{ inputs.environment }}
+        working-directory: ./ADB-PoC
+
+      - name: Add Summary if Success
+        if: success()
+        run: |
+          echo '### :rocket: Databricks Asset Bundle deployment completed successfully!' >> $GITHUB_STEP_SUMMARY
+
+      - name: Add Summary if Failure
+        if: failure()
+        run: |
+          echo '### :red_circle: Databricks Asset Bundle deployment failed.' >> $GITHUB_STEP_SUMMARY
+          echo 'Check the workflow logs for details.' >> $GITHUB_STEP_SUMMARY
