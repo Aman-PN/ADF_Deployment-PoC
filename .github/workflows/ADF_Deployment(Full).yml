@@ -1,4 +1,4 @@
-name: ADF_Deployment_Workflow
+name: ADF_Deployment(Full)
 on:
   workflow_dispatch:
     inputs:
@@ -10,18 +10,6 @@ on:
           - 'stage'
           - 'prod'
         required: true
-      Pipelines:
-        description: 'Enter the pipeline name'
-        type: string
-      LinkedServices:
-        description: 'Enter the linked service name'
-        type: string
-      Datasets:
-        description: 'Enter the dataset name'
-        type: string
-      Triggers:
-        description: 'Enter the trigger name'
-        type: string
       Triggers-status:
         description: 'Provide the status of the triggers to be deployed'
         type: choice
@@ -36,12 +24,8 @@ permissions:
 
 jobs:
   Selective_ADF_Deployment: 
-    uses: Aman-PN/ADF_Deployment-PoC/.github/workflows/main_adf_workflow.yml@develop
+    uses: Aman-PN/ADF_Deployment-PoC/.github/workflows/Main_ADF_full_deployment.yml@develop
     with:
       environment: ${{ inputs.environment }}
-      Pipelines: ${{ inputs.Pipelines }}
-      LinkedServices: ${{ inputs.LinkedServices }}
-      Datasets: ${{ inputs.Datasets }}
-      Triggers: ${{ inputs.Triggers }}
       Triggers-status: ${{ inputs.Triggers-status }}
     secrets: inherit
