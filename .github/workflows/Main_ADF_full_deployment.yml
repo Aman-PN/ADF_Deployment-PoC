@@ -66,7 +66,7 @@ jobs:
         run: |
           echo "This pipeline is triggered by ${{github.actor}}"
           echo "Selected environment is ${{ inputs.environment }}"
-          rm -rf ${{ vars.ARM_FOLDER }}/*
+          #rm -rf ${{ vars.ARM_FOLDER }}/*
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -82,8 +82,8 @@ jobs:
       - name: create replace parameters python script
         run: |
           touch params.json
-
-          cat <<EOT >> replaceparams.py
+          pwd
+          cat <<EOT > replaceparams.py
           """
               This program finds and replaces source environment variables with
               target environment variables
@@ -149,7 +149,7 @@ jobs:
             globals()[args[1]](*args[2:])
           EOT
 
-          cat <<EOT >> adfutility.py
+          cat <<EOT > adfutility.py
           import json
           import sys
 
@@ -320,4 +320,6 @@ jobs:
             echo "Started $trigger trigger"
           done
 
-          rm -rf triggers.txt
+      - name: 'cleanup'
+        run: |
+          rm -rf triggers.txt adfutility.py replaceparams.py params.json
