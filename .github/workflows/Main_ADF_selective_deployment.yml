@@ -55,7 +55,7 @@ jobs:
           run: |
             echo "Approval request sent.."
 
-  centralized_selective_adf_deployment:
+  selective_adf_deployment:
     needs:
       - Approval-Request
       - User-Varification
@@ -75,6 +75,7 @@ jobs:
     steps:
       - name: Pipeline run information
         run: |
+          echo "This pipeline is triggered by ${{ github.actor }}"
           echo "Selected environment is ${{ inputs.environment }}"
 
       - name: Checkout

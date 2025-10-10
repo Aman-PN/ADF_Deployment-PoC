@@ -62,7 +62,7 @@ jobs:
         run: |
           echo "This pipeline is triggered by ${{ github.actor }}"
           echo "Selected environment is ${{ inputs.environment }}"
-          rm -rf ${{ vars.ARM_FOLDER }}/*
+#         rm -rf ${{ vars.ARM_FOLDER }}/*
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -72,7 +72,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Create Python helper scripts
+      - name: Create replace parameters python script
         run: |
           touch params.json
 
@@ -163,7 +163,7 @@ jobs:
             echo "Stopped $trigger trigger"
           done
 
-      - name: Linked service deployment (dynamic file handling)
+      - name: Linked service deployment
         run: |
           set -x
           for file in $(find ${{ vars.ARM_FOLDER }}/linkedService -name "*.json"); do
@@ -174,7 +174,7 @@ jobs:
             az datafactory linked-service create --factory-name "$adf" --name "$lsname" --properties "${{ vars.ARM_FOLDER }}/linkedService/$lsname.json" --resource-group "$rsg" --output table
           done
 
-      - name: Dataset deployment (dynamic file handling)
+      - name: Dataset deployment
         run: |
           set -x
           for file in $(find ${{ vars.ARM_FOLDER }}/dataset -name "*.json"); do
@@ -185,7 +185,7 @@ jobs:
             az datafactory dataset create --factory-name "$adf" --name "$dsname" --properties "${{ vars.ARM_FOLDER }}/dataset/$dsname.json" --resource-group "$rsg" --output table
           done
 
-      - name: Pipeline deployment (dynamic file handling)
+      - name: Pipeline deployment
         run: |
           set -x
           for file in $(find ${{ vars.ARM_FOLDER }}/pipeline -name "*.json"); do
@@ -196,7 +196,7 @@ jobs:
             az datafactory pipeline create --factory-name "$adf" --name "$pipelinename" --pipeline "${{ vars.ARM_FOLDER }}/pipeline/$pipelinename.json" --resource-group "$rsg" --output table
           done
 
-      - name: Trigger deployment (dynamic file handling)
+      - name: Trigger deployment
         run: |
           set -x
           for file in $(find ${{ vars.ARM_FOLDER }}/trigger -name "*.json"); do
@@ -229,4 +229,6 @@ jobs:
             echo "Started $trigger trigger"
           done
 
-          rm -rf triggers.txt
+      - name: 'cleanup'
+        run: |
+          rm -rf triggers.txt adfutility.py replaceparams.py params.json
