@@ -1,5 +1,11 @@
 name: ADF_Deployment(Full)
+
 on:
+  push:
+    branches:
+      - develop
+      - stage
+      
   workflow_dispatch:
     inputs:
       environment:
@@ -16,14 +22,29 @@ on:
         options:
           - 'Started'
           - 'Stopped'
-        default: 'Started'
+        default: 'Stopped'
     
 permissions:
   contents: read
   id-token: write
 
 jobs:
+  Deploying_To_Dev:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    uses: Aman-PN/Github_Workflows/.github/workflows/Main_ADF_full_deployment.yml@main
+    with:
+      environment: dev
+    secrets: inherit
+    
+  Deploying_To_Stage:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/stage'
+    uses: Aman-PN/Github_Workflows/.github/workflows/Main_ADF_full_deployment.yml@main
+    with:
+      environment: stage
+    secrets: inherit
+
   Selective_ADF_Deployment:
+    if: github.event_name == 'workflow_dispatch'
     uses: Aman-PN/Github_Workflows/.github/workflows/Main_ADF_full_deployment.yml@main
     with:
       environment: ${{ inputs.environment }}
