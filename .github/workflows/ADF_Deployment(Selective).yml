@@ -36,7 +36,7 @@ permissions:
 
 jobs:
   Selective_ADF_Deployment: 
-    uses: Aman-PN/ADF_Deployment-PoC/.github/workflows/Main_ADF_selective_deployment.yml@develop
+    uses: Aman-PN/Github_Workflows/.github/workflows/Main_ADF_selective_deployment.yml@main
     with:
       environment: ${{ inputs.environment }}
       Pipelines: ${{ inputs.Pipelines }}
