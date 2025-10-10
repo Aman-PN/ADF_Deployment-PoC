@@ -22,7 +22,7 @@ on:
         options:
           - 'Started'
           - 'Stopped'
-        default: 'Started'
+        default: 'Stopped'
     
 permissions:
   contents: read
@@ -48,6 +48,7 @@ jobs:
     uses: Aman-PN/Github_Workflows/.github/workflows/Main_ADF_full_deployment.yml@main
     with:
       environment: ${{ inputs.environment }}
+      Triggers-status: ${{ inputs.Triggers-status }}
     secrets: inherit    
     # with:
     #   environment: ${{ inputs.environment }}
