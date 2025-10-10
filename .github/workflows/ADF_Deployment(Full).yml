@@ -29,11 +29,25 @@ permissions:
   id-token: write
 
 jobs:
-  Selective_ADF_Deployment:
+  Deploying_To_Dev:
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     uses: Aman-PN/Github_Workflows/.github/workflows/Main_ADF_full_deployment.yml@main
     with:
       environment: dev
+    secrets: inherit
+    
+  Deploying_To_Stage:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/stage'
+    uses: Aman-PN/Github_Workflows/.github/workflows/Main_ADF_full_deployment.yml@main
+    with:
+      environment: stage
+    secrets: inherit
+
+  Selective_ADF_Deployment:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    uses: Aman-PN/Github_Workflows/.github/workflows/Main_ADF_full_deployment.yml@main
+    with:
+      environment: ${{ inputs.environment }}
     secrets: inherit    
     # with:
     #   environment: ${{ inputs.environment }}
