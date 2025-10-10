@@ -33,6 +33,9 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     uses: Aman-PN/Github_Workflows/.github/workflows/Main_ADF_full_deployment.yml@main
     with:
-      environment: ${{ inputs.environment }}
-      Triggers-status: ${{ inputs.Triggers-status }}
-    secrets: inherit
+      environment: dev
+    secrets: inherit    
+    # with:
+    #   environment: ${{ inputs.environment }}
+    #   Triggers-status: ${{ inputs.Triggers-status }}
+    # secrets: inherit
