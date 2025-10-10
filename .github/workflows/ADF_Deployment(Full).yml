@@ -23,7 +23,7 @@ permissions:
   id-token: write
 
 jobs:
-  Selective_ADF_Deployment: 
+  Selective_ADF_Deployment:
     uses: Aman-PN/Github_Workflows/.github/workflows/Main_ADF_full_deployment.yml
     with:
       environment: ${{ inputs.environment }}
