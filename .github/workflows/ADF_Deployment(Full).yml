@@ -1,5 +1,11 @@
 name: ADF_Deployment(Full)
+
 on:
+  push:
+    branches:
+      - develop
+      - stage
+      
   workflow_dispatch:
     inputs:
       environment:
