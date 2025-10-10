@@ -11,22 +11,20 @@ on:
         type: string
         default: 'Started'
 
-
 permissions:
-      id-token: write
-      contents: read
+  id-token: write
+  contents: read
 
 jobs:
 
   User-Varification:
     runs-on: ubuntu-latest
-    if : ( contains( inputs.environment, 'prod' ) || contains( inputs.environment, 'stage' ))
+    if: (contains(inputs.environment, 'prod') || contains(inputs.environment, 'stage'))
     steps:
       - name: User Varification
         run: |
           echo ${{ vars.AUTHORIZED_USERS_FOR_PROD_DEPLOYMENTS }} >> ProdDeployUsersWhiteList.txt
-          if grep '${{ github.actor }}' ProdDeployUsersWhiteList.txt;
-          then
+          if grep '${{ github.actor }}' ProdDeployUsersWhiteList.txt; then
             echo "${{ github.actor }} user is authorized to deploy on Stage & Production environment"
           else
             echo "${{ github.actor }} user is not authorized to deploy on Stage & Production environment"
@@ -35,12 +33,12 @@ jobs:
 
   Approval-Request:
     needs: User-Varification
-    if : always() && ( contains( inputs.environment, 'prod' ) || contains( inputs.environment, 'stage' ))
+    if: always() && (contains(inputs.environment, 'prod') || contains(inputs.environment, 'stage'))
     runs-on: ubuntu-latest
     steps:
-        - name: Approval Request
-          run: |
-            echo "Approval request sent.."
+      - name: Approval Request
+        run: |
+          echo "Approval request sent.."
 
   full_adf_deployment:
     needs:
@@ -50,129 +48,89 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
-      adfbranch : ${{ vars.ADFBRANCH }}
-      subscriptionIdVariable : ${{ vars.ARM_SUBSCRIPTION_ID }}
-      clientIdVariable: ${{ secrets.ARM_CLIENT_ID}}
-      clientSecretVariable: ${{ secrets.ARM_CLIENT_SECRET}}
-      tenantIdVariable : ${{ vars.ARM_TENANT_ID }}
-      rsg : ${{ vars.RSG }}
-      adf : ${{ vars.ADF }}
-      arm_folder : ${{ vars.ARM_FOLDER }}
-
+      adfbranch: ${{ vars.ADFBRANCH }}
+      subscriptionIdVariable: ${{ vars.ARM_SUBSCRIPTION_ID }}
+      clientIdVariable: ${{ secrets.ARM_CLIENT_ID }}
+      clientSecretVariable: ${{ secrets.ARM_CLIENT_SECRET }}
+      tenantIdVariable: ${{ vars.ARM_TENANT_ID }}
+      rsg: ${{ vars.RSG }}
+      adf: ${{ vars.ADF }}
+      arm_folder: ${{ vars.ARM_FOLDER }}
 
     steps:
       - name: Pipeline run information
         run: |
-          echo "This pipeline is triggered by ${{github.actor}}"
+          echo "This pipeline is triggered by ${{ github.actor }}"
           echo "Selected environment is ${{ inputs.environment }}"
           rm -rf ${{ vars.ARM_FOLDER }}/*
 
       - name: Checkout
         uses: actions/checkout@v4
-        #with:
-          ##ref: ${{ vars.ADFBRANCH }}
-          ### path: ${{ vars.ARM_FOLDER }}
 
       - name: Set up Python
         uses: actions/setup-python@v5.6.0
         with:
-          python-version: '3.12' # Change to your Python version if needed
+          python-version: '3.12'
 
-      - name: create replace parameters python script
+      - name: Create Python helper scripts
         run: |
           touch params.json
 
-          cat <<EOT >> replaceparams.py
-          """
-              This program finds and replaces source environment variables with
-              target environment variables
-          """
-
+          cat <<'EOT' > replaceparams.py
           import os, sys
           from csv import reader
 
-
           def replaceString(fileName, sourceSetting, targetSetting):
-              """
-              This function finds the sourceSetting string in the file
-              and replaces it with targetSetting
-              """
-              fin = open(fileName, "rt")
-              data = fin.read()
-              # replace all occurrences of the required string
-              data = data.replace(sourceSetting, targetSetting)
-              # close the input file
-              fin.close()
-              # open the input file in write mode
-              fin = open(fileName, "wt")
-              # overrite the input file with the resulting data
-              fin.write(data)
-              # close the file
-              fin.close()
-
+              with open(fileName, "rt") as fin:
+                  data = fin.read().replace(sourceSetting, targetSetting)
+              with open(fileName, "wt") as fout:
+                  fout.write(data)
 
           def getFileNames(directoryName):
-              """
-              This function gets list of all names within the directory
-              """
               fileList = []
-              # iterate over files in that directory
-              for (root, dirs, file) in os.walk(directoryName):
-                  for f in file:
+              for (root, dirs, files) in os.walk(directoryName):
+                  for f in files:
                       if '.json' in f:
                           fileList.append(os.path.join(root, f))
-
               return fileList
 
-
           def prepareFiles(sourceDirectory, nameValuePairFile):
-              """
-              This function is the main that takes source directory and replaces all values based on
-              nameValuePairFile
-              """
               with open(nameValuePairFile, 'r') as read_obj:
-                  # pass the file object to reader() to get the reader object
                   csv_reader = reader(read_obj)
-                  # Pass reader object to list() to get a list of lists
                   list_of_rows = list(csv_reader)
                   list_of_files = getFileNames(sourceDirectory)
                   for fileName in list_of_files:
-                      print(fileName)
                       for item in list_of_rows:
                           replaceString(fileName, item[0], item[1])
+
           if __name__ == '__main__':
-            args = sys.argv
-              # args[0] = current file
-              # args[1] = function name
-              # args[2:] = function args : (*unpacked)
-            globals()[args[1]](*args[2:])
+              args = sys.argv
+              globals()[args[1]](*args[2:])
           EOT
 
-          cat <<EOT >> adfutility.py
-          import json
-          import sys
+          cat <<'EOT' > adfutility.py
+          import json, sys
 
           def getname(inputfile):
-              with open(inputfile,'r') as gn:
+              with open(inputfile, 'r') as gn:
                   data = json.load(gn)
-                  name=data["name"]
-              print(name)
+                  print(data["name"])
 
-          def getfile(inputfile,outputfile):
-              with open(inputfile,'r') as ipf:
-                  data=json.load(ipf)
-                  properties=data["properties"]
-                  with open(outputfile,'w') as opf:
-                      json.dump(properties,opf)
+          def getfile(inputfile, outputfile):
+              with open(inputfile, 'r') as ipf:
+                  data = json.load(ipf)
+                  properties = data["properties"]
+                  with open(outputfile, 'w') as opf:
+                      json.dump(properties, opf)
 
-          def getparam(paramfile,valuefile,component):
-              with open(paramfile,'r') as pf:
-                  data=json.load(pf)
-                  with open(valuefile,'r') as vf:
-                      value=json.load(vf)
-                      for p,v in value.items():
-                          if(component=="pipeline"):
-                              data["properties"]["parameters"][p]["defaultValue"]=v
+          def getparam(paramfile, valuefile, component):
+              with open(paramfile, 'r') as pf:
+                  data = json.load(pf)
+                  with open(valuefile, 'r') as vf:
+                      value = json.load(vf)
+                      for p, v in value.items():
+                          if component == "pipeline":
+                              data["properties"]["parameters"][p]["defaultValue"] = v
                           else:
                               data["pipeline"]["parameters"][p] = v
                       with open(paramfile, 'w') as opf:
@@ -182,140 +140,92 @@ jobs:
               globals()[sys.argv[1]](*sys.argv[2:])
           EOT
 
-
-      - name: replace parameters
-        run : |
+      - name: Replace parameters
+        run: |
           echo "${{ vars.PARAMETERIZATION }}" > parameters.txt
-          cat parameters.txt
           python replaceparams.py prepareFiles ${{ vars.ARM_FOLDER }} parameters.txt
 
-      - name: 'Az Login'
-        run : |
+      - name: Azure Login
+        run: |
           az login --service-principal -u ${{ secrets.ARM_CLIENT_ID }} -p ${{ secrets.ARM_CLIENT_SECRET }} -t ${{ vars.ARM_TENANT_ID }} --allow-no-subscriptions
           az config set extension.use_dynamic_install=yes_without_prompt
 
-      - name: 'Get current triggers status'
+      - name: Get current triggers status
         continue-on-error: true
         run: |
-          az datafactory trigger list --factory-name "${{vars.ADF}}" --resource-group "${{vars.RSG}}" --query "[?properties.runtimeState=='Started'].name" -o tsv > triggers.txt
-          #az datafactory trigger list --factory-name "${{vars.ADF}}" --resource-group "${{vars.RSG}}" --query "[?properties.runtimeState=='Stopped'].name" -o tsv > stopped_triggers.txt
+          az datafactory trigger list --factory-name "${{ vars.ADF }}" --resource-group "${{ vars.RSG }}" --query "[?properties.runtimeState=='Started'].name" -o tsv > triggers.txt
 
-      - name: 'stop triggers'
+      - name: Stop triggers
         continue-on-error: true
-        run : |
-          for trigger in $(cat triggers.txt)
-          do
-            az datafactory trigger stop --factory-name "${{ vars.ADF }}" --resource-group "${{vars.RSG}}" --name "$trigger"
-            echo "stopped $trigger trigger"
+        run: |
+          for trigger in $(cat triggers.txt); do
+            az datafactory trigger stop --factory-name "${{ vars.ADF }}" --resource-group "${{ vars.RSG }}" --name "$trigger"
+            echo "Stopped $trigger trigger"
           done
 
-      - name: 'linked service deployment'
-        run : |
+      - name: Linked service deployment (dynamic file handling)
+        run: |
           set -x
-          linkedservices=`find ${{ vars.ARM_FOLDER }}/linkedService/. -type f -name "*.json" -exec awk 'NR==2 && /"name":/ {gsub(/[",]/, "", $2); print $2}' {} \; | xargs echo`
-          for linkedService in $linkedservices;
-          do
-            ls
-            echo " starting"
-
-            python adfutility.py getname "${{ vars.ARM_FOLDER }}/linkedService/$linkedService.json">ls.txt
-            echo " after python adfutility.py"
+          for file in $(find ${{ vars.ARM_FOLDER }}/linkedService -name "*.json"); do
+            python adfutility.py getname "$file" > ls.txt
             lsname=$(cat ls.txt)
-            python adfutility.py getfile "${{ vars.ARM_FOLDER }}/linkedService/$linkedService.json" "${{ vars.ARM_FOLDER }}/linkedService/$lsname.json"
+            python adfutility.py getfile "$file" "${{ vars.ARM_FOLDER }}/linkedService/$lsname.json"
             echo "Creating $lsname linked service"
-            set -x
             az datafactory linked-service create --factory-name "$adf" --name "$lsname" --properties "${{ vars.ARM_FOLDER }}/linkedService/$lsname.json" --resource-group "$rsg" --output table
-            set +x
-            if [ $? -eq 0 ];
-            then
-              echo "Created $lsname linkedService successfully"
-            else
-              echo "Failed to create $lsname linkedService"
-            fi
           done
 
-      - name: 'dataset deployment'
-        run : |
-          set -x
-          datasets=`find ${{ vars.ARM_FOLDER }}/dataset/. -type f -name "*.json" -exec awk 'NR==2 && /"name":/ {gsub(/[",]/, "", $2); print $2}' {} \; | xargs echo`
-          for dataset in $datasets;
-          do
-            python adfutility.py getname "${{ vars.ARM_FOLDER }}/dataset/$dataset.json">ds.txt
-            dsname=$(cat ds.txt)
-            python adfutility.py getfile "${{ vars.ARM_FOLDER }}/dataset/$dataset.json" "${{ vars.ARM_FOLDER }}/dataset/$dsname.json"
-            echo "Creating $dsname linked service"
-            echo 'az datafactory dataset create --factory-name "$adf" --name "$dsname" --properties "${{ vars.ARM_FOLDER }}/dataset/$dsname.json" --resource-group "$rsg" --output table'
-            az datafactory dataset create --factory-name "$adf" --name "$dsname" --properties "${{ vars.ARM_FOLDER }}/dataset/$dsname.json" --resource-group "$rsg" --output table
-            if [ $? -eq 0 ];
-            then
-              echo "Created $dsname dataset successfully"
-            else
-              echo "Failed to create $dsname dataset"
-            fi
-          done
-
-      - name: 'pipeline service deployment'
-        run : |
-          set -x
-          pipelines=`find ${{ vars.ARM_FOLDER }}/pipeline/. -type f -name "*.json" -exec awk 'NR==2 && /"name":/ {gsub(/[",]/, "", $2); print $2}' {} \; | xargs echo`
-          for pipeline in $pipelines;
-          do
-            echo "Creating $pipeline pipeline"
-            python adfutility.py getname "${{ vars.ARM_FOLDER }}/pipeline/$pipeline.json">pipeline.txt
-            pipelinename=$(cat pipeline.txt)
-            python adfutility.py getfile "${{ vars.ARM_FOLDER }}/pipeline/$pipeline.json" "${{ vars.ARM_FOLDER }}/pipeline/$pipelinename.json"
-            echo "Creating $pipelinename pipeline"
-            ls -la ${{ vars.ARM_FOLDER }}/pipeline/
-            az datafactory pipeline create --factory-name "$adf" --name "$pipelinename" --pipeline "${{ vars.ARM_FOLDER }}/pipeline/$pipelinename.json" --resource-group "$rsg" --output table
-            if [ $? -eq 0 ];
-              then
-                echo "Created $pipeline pipeline successfully"
-            else
-              echo "Failed to create $pipeline pipeline"
-            fi
-          done
-
-      - name: 'triggers deployment'
-        run : |
-          set -x
-          idmtriggers=`find ${{ vars.ARM_FOLDER }}/trigger/. -type f -name "*.json" -exec awk 'NR==2 && /"name":/ {gsub(/[",]/, "", $2); print $2}' {} \; | xargs echo`
-          for trigger in $idmtriggers;
-          do
-            echo "Creating $trigger adf trigger"
-            python adfutility.py getname "${{ vars.ARM_FOLDER }}/trigger/$trigger.json">trigger.txt
-            triggername=$(cat trigger.txt)
-            python adfutility.py getfile "${{ vars.ARM_FOLDER }}/trigger/$trigger.json" "${{ vars.ARM_FOLDER }}/trigger/${triggername}duprop.json"
-            az datafactory trigger create --factory-name "$adf" --name "$trigger" --properties "${{ vars.ARM_FOLDER }}/trigger/${triggername}duprop.json" --resource-group "$rsg" --output table
-            if [ $? -eq 0 ];
-              then
-                echo "Created $trigger trigger successfully"
-            else
-              echo "Failed to create $trigger trigger"
-            fi
-          done
-
-      - name: 'new triggers status'
+      - name: Dataset deployment (dynamic file handling)
         run: |
-          if [ ${{inputs.Triggers-status}} == "Started" ]; then
-          idmtriggers=`find ${{ vars.ARM_FOLDER }}/trigger/. -type f -name "*.json" -exec awk 'NR==2 && /"name":/ {gsub(/[",]/, "", $2); print $2}' {} \; | xargs echo`
-            for trigger in $idmtriggers
-            do
+          set -x
+          for file in $(find ${{ vars.ARM_FOLDER }}/dataset -name "*.json"); do
+            python adfutility.py getname "$file" > ds.txt
+            dsname=$(cat ds.txt)
+            python adfutility.py getfile "$file" "${{ vars.ARM_FOLDER }}/dataset/$dsname.json"
+            echo "Creating $dsname dataset"
+            az datafactory dataset create --factory-name "$adf" --name "$dsname" --properties "${{ vars.ARM_FOLDER }}/dataset/$dsname.json" --resource-group "$rsg" --output table
+          done
+
+      - name: Pipeline deployment (dynamic file handling)
+        run: |
+          set -x
+          for file in $(find ${{ vars.ARM_FOLDER }}/pipeline -name "*.json"); do
+            python adfutility.py getname "$file" > pipeline.txt
+            pipelinename=$(cat pipeline.txt)
+            python adfutility.py getfile "$file" "${{ vars.ARM_FOLDER }}/pipeline/$pipelinename.json"
+            echo "Creating $pipelinename pipeline"
+            az datafactory pipeline create --factory-name "$adf" --name "$pipelinename" --pipeline "${{ vars.ARM_FOLDER }}/pipeline/$pipelinename.json" --resource-group "$rsg" --output table
+          done
+
+      - name: Trigger deployment (dynamic file handling)
+        run: |
+          set -x
+          for file in $(find ${{ vars.ARM_FOLDER }}/trigger -name "*.json"); do
+            python adfutility.py getname "$file" > trigger.txt
+            triggername=$(cat trigger.txt)
+            python adfutility.py getfile "$file" "${{ vars.ARM_FOLDER }}/trigger/${triggername}duprop.json"
+            echo "Creating $triggername trigger"
+            az datafactory trigger create --factory-name "$adf" --name "$triggername" --properties "${{ vars.ARM_FOLDER }}/trigger/${triggername}duprop.json" --resource-group "$rsg" --output table
+          done
+
+      - name: New triggers status
+        run: |
+          if [ "${{ inputs.Triggers-status }}" == "Started" ]; then
+            for file in $(find ${{ vars.ARM_FOLDER }}/trigger -name "*.json"); do
+              python adfutility.py getname "$file" > tname.txt
+              trigger=$(cat tname.txt)
               if [ $(grep -c "$trigger" triggers.txt) -eq 0 ]; then
-                echo $trigger >> triggers.txt
-              else
-                echo "$trigger already exists in the list"
+                echo "$trigger" >> triggers.txt
               fi
             done
           else
             echo "No new triggers to start"
           fi
 
-      - name: 'initiate triggers'
+      - name: Initiate triggers
         if: always()
-        run : |
-          for trigger in $(cat triggers.txt)
-          do
-            az datafactory trigger start --factory-name "${{ vars.ADF }}" --resource-group "${{vars.RSG}}" --name "$trigger"
+        run: |
+          for trigger in $(cat triggers.txt); do
+            az datafactory trigger start --factory-name "${{ vars.ADF }}" --resource-group "${{ vars.RSG }}" --name "$trigger"
             echo "Started $trigger trigger"
           done
 
