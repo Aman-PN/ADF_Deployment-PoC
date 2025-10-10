@@ -44,7 +44,7 @@ jobs:
     secrets: inherit
 
   Selective_ADF_Deployment:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    if: github.event_name == 'workflow_dispatch'
     uses: Aman-PN/Github_Workflows/.github/workflows/Main_ADF_full_deployment.yml@main
     with:
       environment: ${{ inputs.environment }}
