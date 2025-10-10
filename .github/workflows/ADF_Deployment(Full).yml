@@ -49,8 +49,4 @@ jobs:
     with:
       environment: ${{ inputs.environment }}
       Triggers-status: ${{ inputs.Triggers-status }}
-    secrets: inherit    
-    # with:
-    #   environment: ${{ inputs.environment }}
-    #   Triggers-status: ${{ inputs.Triggers-status }}
-    # secrets: inherit 
+    secrets: inherit
