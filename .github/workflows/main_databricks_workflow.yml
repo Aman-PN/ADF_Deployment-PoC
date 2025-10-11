@@ -237,7 +237,7 @@ jobs:
           fi
           cd - >/dev/null
 
-      - name: Post-deploy: verify jobs / list recent runs
+      - name: Post-deploy:verify jobs / list recent runs
         run: |
           echo "Post-deploy check: list top jobs (quick summary)"
           databricks jobs list --output table || echo "Warning: failed to list jobs"
