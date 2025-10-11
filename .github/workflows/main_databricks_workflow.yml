@@ -161,26 +161,33 @@ jobs:
           az account set --subscription "${{ vars.ARM_SUBSCRIPTION_ID }}" || true
           az config set extension.use_dynamic_install=yes_without_prompt
           set +x
-
-      - name: Get AAD token for Databricks and configure databricks CLI
-        id: configure_dbr
+          
+      - name: Configure Databricks CLI
         run: |
-          set -e
-          echo "Getting AAD token for Azure Databricks (resource id: c44b4083-3bb0-49c1-b47d-974e53cbdf3c)"
-          # Get access token for Azure Databricks service (will be used with databricks CLI)
-          token=$(az account get-access-token --resource c44b4083-3bb0-49c1-b47d-974e53cbdf3c --query accessToken -o tsv)
-          if [ -z "$token" ]; then
-            echo "ERROR: Failed to get AAD token for Databricks"
-            exit 1
-          fi
-          echo "Configuring databricks CLI with AAD token (host: $DATABRICKS_HOST)"
-          # The databricks CLI supports configuring an AAD token; pipe the token to the configure command
-          printf "%s\n" "$token" | databricks configure --aad-token --host "$DATABRICKS_HOST"
-          echo "Databricks CLI configured."
-          # export token for any commands that might read env var
-          echo "DATABRICKS_AAD_TOKEN<<EOF" >> $GITHUB_OUTPUT
-          echo "$token" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          databricks configure --token --host ${{ secrets.DATABRICKS_HOST }}
+        env:
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+    
+
+      # - name: Get AAD token for Databricks and configure databricks CLI
+      #   id: configure_dbr
+      #   run: |
+      #     set -e
+      #     echo "Getting AAD token for Azure Databricks (resource id: c44b4083-3bb0-49c1-b47d-974e53cbdf3c)"
+      #     # Get access token for Azure Databricks service (will be used with databricks CLI)
+      #     token=$(az account get-access-token --resource c44b4083-3bb0-49c1-b47d-974e53cbdf3c --query accessToken -o tsv)
+      #     if [ -z "$token" ]; then
+      #       echo "ERROR: Failed to get AAD token for Databricks"
+      #       exit 1
+      #     fi
+      #     echo "Configuring databricks CLI with AAD token (host: $DATABRICKS_HOST)"
+      #     # The databricks CLI supports configuring an AAD token; pipe the token to the configure command
+      #     printf "%s\n" "$token" | databricks configure --aad-token --host "$DATABRICKS_HOST"
+      #     echo "Databricks CLI configured."
+      #     # export token for any commands that might read env var
+      #     echo "DATABRICKS_AAD_TOKEN<<EOF" >> $GITHUB_OUTPUT
+      #     echo "$token" >> $GITHUB_OUTPUT
+      #     echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Get current active job runs (stage/prod only)
         if: contains(inputs.environment, 'stage') || contains(inputs.environment, 'prod')
