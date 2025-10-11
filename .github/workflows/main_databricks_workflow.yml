@@ -166,9 +166,9 @@ jobs:
         id: configure_dbr
         run: |
           set -e
-          echo "Getting AAD token for Azure Databricks (resource id: 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d)"
+          echo "Getting AAD token for Azure Databricks (resource id: c44b4083-3bb0-49c1-b47d-974e53cbdf3c)"
           # Get access token for Azure Databricks service (will be used with databricks CLI)
-          token=$(az account get-access-token --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d --query accessToken -o tsv)
+          token=$(az account get-access-token --resource c44b4083-3bb0-49c1-b47d-974e53cbdf3c --query accessToken -o tsv)
           if [ -z "$token" ]; then
             echo "ERROR: Failed to get AAD token for Databricks"
             exit 1
