@@ -1,60 +1,52 @@
-name: Databricks_Deployment_Workflow
+name: Databricks_Deployment(Full)
 
-# on:
-#   push:
-#     branches:
-#       - develop
-#       - stage
-#     paths:
-#       - "ADB-PoC/**"
-
-    # paths-ignore:
-    #   - '.github/**'
-    #   - '**/*.md'
-    #   - '**/*.txt'
-
+on:
+  # push:
+  #   branches:
+  #     - develop
+  #     - stage
+      
   workflow_dispatch:
-    paths:
-      - "ADB-PoC/**"
     inputs:
       environment:
-        description: 'deploy to'
-        type: environment
+        description: 'Target environment for Databricks deployment'
+        type: choice
+        options:
+          - 'dev'
+          - 'stage'
+          - 'prod'
         required: true
-        default: 'dev'
-      # destionation_folder:
-      #     description: 'Enter the destination folder path(/Remote path) & use / at starting and for sub_path'
-      #     required: false
-      #     type: string
-      #     default: '/batch'
+      # Deployment-mode:
+      #   description: 'Select deployment mode (Full or Partial)'
+      #   type: choice
+      #   options:
+      #     - 'Full'
+      #     - 'Partial'
+      #   default: 'Full'
 
 permissions:
   contents: read
   id-token: write
 
 jobs:
-  dev_code_deploy_to_databricks:
+  Deploying_To_Dev:
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
-
-    uses: Aman-PN/ADF_Deployment-PoC/.github/workflows/main_databricks_workflow.yml@develop
+    uses: Aman-PN/ADF_Deployment-POC/.github/workflows/main_databricks_workflow.yml@main
     with:
       environment: dev
-      #destionation_folder: '/batch'
     secrets: inherit
     
-  stage_code_deploy_to_databricks:
+  Deploying_To_Stage:
     if: github.event_name == 'push' && github.ref == 'refs/heads/stage'
-
-    uses: Aman-PN/ADF_Deployment-PoC/.github/workflows/main_databricks_workflow.yml@develop
+    uses: Aman-PN/ADF_Deployment-POC/.github/workflows/main_databricks_workflow.yml@main
     with:
       environment: stage
-      #destionation_folder: '/batch'
     secrets: inherit
-    
-  code_deploy_to_databricks:
+
+  Selective_Databricks_Deployment:
     if: github.event_name == 'workflow_dispatch'
-    uses: Aman-PN/ADF_Deployment-PoC/.github/workflows/main_databricks_workflow.yml@develop
+    uses: Aman-PN/ADF_Deployment-POC/.github/workflows/main_databricks_workflow.yml@main
     with:
       environment: ${{ inputs.environment }}
-      #destionation_folder: '/batch'
+      Deployment-mode: ${{ inputs.Deployment-mode }}
     secrets: inherit

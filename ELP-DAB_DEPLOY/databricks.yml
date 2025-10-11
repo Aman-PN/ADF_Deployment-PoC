@@ -1,0 +1,46 @@
+bundle:
+  name: ELP-DAB_DEPLOY
+
+workspace:
+  host: https://adb-4056904538165901.1.azuredatabricks.net/
+
+targets:
+  dev:
+    workspace:
+      host: https://adb-4056904538165901.1.azuredatabricks.net/
+      root_path: /Workspace/ADF_Deployment-PoC/dev/ELP-DAB_DEPLOY/databricks_bundle
+    default: true
+
+  # stage:
+  #   workspace:
+  #     host: https://adb-4056904538165901.1.azuredatabricks.net/
+  #     root_path: /Workspace/ADF_Deployment-PoC/stage/ELP-DAB_DEPLOY/databricks_bundle
+
+  # prod:
+  #   workspace:
+  #     host: https://adb-4056904538165901.1.azuredatabricks.net/
+  #     root_path: /Workspace/ADF_Deployment-PoC/prod/ELP-DAB_DEPLOY/databricks_bundle
+
+resources:
+  # ----------------------------------------------------
+  # Deploy Notebooks
+  # ----------------------------------------------------
+  notebooks:
+    hello_world:
+      source: resources/notebooks/Hello_world.py
+      path: ${workspace.root_path}/resources/notebooks/Hello_world.py
+
+  # ----------------------------------------------------
+  # Deploy Jobs
+  # ----------------------------------------------------
+  jobs:
+    poc_job:
+      name: poc_job
+      tasks:
+        - task_key: Notebook_run
+          notebook_task:
+            notebook_path: ${workspace.root_path}/resources/notebooks/Hello_world.py
+            source: WORKSPACE
+          existing_cluster_id: 1011-183617-fo4vk9b2
+      queue:
+        enabled: true
