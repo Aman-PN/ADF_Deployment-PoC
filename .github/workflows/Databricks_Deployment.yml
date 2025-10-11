@@ -1,12 +1,12 @@
 name: Databricks_Deployment_Workflow
 
-on:
-  push:
-    branches:
-      - develop
-      - stage
-    paths:
-      - "ADB-PoC/**"
+# on:
+#   push:
+#     branches:
+#       - develop
+#       - stage
+#     paths:
+#       - "ADB-PoC/**"
 
     # paths-ignore:
     #   - '.github/**'
