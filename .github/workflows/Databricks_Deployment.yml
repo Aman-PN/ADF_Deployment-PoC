@@ -48,5 +48,5 @@ jobs:
     uses: Aman-PN/ADF_Deployment-POC/.github/workflows/main_databricks_workflow.yml@develop
     with:
       environment: ${{ inputs.environment }}
-      Deployment-mode: ${{ inputs.Deployment-mode }}
+      #Deployment-mode: ${{ inputs.Deployment-mode }}
     secrets: inherit
