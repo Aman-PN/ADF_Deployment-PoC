@@ -161,12 +161,14 @@ jobs:
           az account set --subscription "${{ vars.ARM_SUBSCRIPTION_ID }}" || true
           az config set extension.use_dynamic_install=yes_without_prompt
           set +x
-          
-      - name: Configure Databricks CLI
+
+      - name: Configure Databricks CLI authentication
         run: |
-          databricks configure --token --host $DATABRICKS_HOST
-        env:
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          echo "[DEFAULT]" > ~/.databrickscfg
+          echo "host = ${{ vars.URL }}" >> ~/.databrickscfg
+          echo "azure_tenant_id = ${{ vars.ARM_TENANT_ID }}" >> ~/.databrickscfg
+          echo "azure_client_id = ${{ secrets.ARM_CLIENT_ID}}" >> ~/.databrickscfg
+          echo "azure_client_secret = ${{ secrets.ARM_CLIENT_SECRET}}" >> ~/.databrickscfg
     
 
       # - name: Get AAD token for Databricks and configure databricks CLI
