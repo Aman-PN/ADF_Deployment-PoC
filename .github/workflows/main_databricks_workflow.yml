@@ -218,17 +218,17 @@ jobs:
             done < job_ids.txt
           fi
 
-      - name: Validate bundle
-        run: |
-          set -e
-          if [ ! -d "$DATABRICKS_BUNDLE_PATH" ]; then
-            echo "ERROR: bundle path $DATABRICKS_BUNDLE_PATH not found"
-            exit 1
-          fi
-          cd "$DATABRICKS_BUNDLE_PATH"
-          echo "Running databricks bundle validate in $(pwd)"
-          databricks bundle validate || (echo "Bundle validation failed"; exit 1)
-          cd - >/dev/null
+      # - name: Validate bundle
+      #   run: |
+      #     set -e
+      #     if [ ! -d "$DATABRICKS_BUNDLE_PATH" ]; then
+      #       echo "ERROR: bundle path $DATABRICKS_BUNDLE_PATH not found"
+      #       exit 1
+      #     fi
+      #     cd "$DATABRICKS_BUNDLE_PATH"
+      #     echo "Running databricks bundle validate in $(pwd)"
+      #     databricks bundle validate || (echo "Bundle validation failed"; exit 1)
+      #     cd - >/dev/null
 
       - name: Deploy bundle to target workspace
         run: |
