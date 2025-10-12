@@ -34,7 +34,7 @@ resources:
   # Deploy Jobs
   # ----------------------------------------------------
   jobs:
-    poc_job:
+    dev_poc_job:
       name: dev_poc_job
       tasks:
         - task_key: Notebook_run
