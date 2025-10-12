@@ -170,7 +170,7 @@ jobs:
               "kind": "CLASSIC_PREVIEW",
               "is_single_node": true
             }
-            `EOF'
+
             databricks clusters create --json-file cluster_config.json
           else
             echo "Cluster $CLUSTER_NAME already exists (id: $cluster_id)"
