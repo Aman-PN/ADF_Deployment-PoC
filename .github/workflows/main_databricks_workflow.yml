@@ -247,8 +247,11 @@ jobs:
                                   else:
                                       print(f"✅ Creating new job '{job_name}'")
                                       subprocess.run(f"databricks jobs create --json-file {json_file_path}", shell=True, check=True)
-
-                                  continue
+ 
+                              except subprocess.CalledProcessError as e:
+                                  print(f"❌ Databricks CLI error while deploying '{job_name}': {e}")
+                                  # Continue to next job safely
+                                  continue    
           EOT
 
               # Run the deployment
