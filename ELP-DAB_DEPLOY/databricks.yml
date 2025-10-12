@@ -8,13 +8,13 @@ targets:
   dev:
     workspace:
       host: https://adb-4056904538165901.1.azuredatabricks.net/
-      root_path: /Workspace/ADF_Deployment-PoC/dev/ELP-DAB_DEPLOY/databricks_bundle
+      root_path: /Workspace/ELP-DAB_DEPLOY/databricks_bundle
     default: true
 
   stage:
     workspace:
       host: https://adb-651201796011770.10.azuredatabricks.net
-      root_path: /Workspace/ADF_Deployment-PoC/stage/ELP-DAB_DEPLOY/databricks_bundle
+      root_path: /Workspace/ELP-DAB_DEPLOY/databricks_bundle
 
   # prod:
   #   workspace:
