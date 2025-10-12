@@ -1,6 +1,6 @@
 name: ADF_Deployment(Full)
 
-# on:
+on:
 #   push:
 #     branches:
 #       - develop
