@@ -158,7 +158,7 @@ jobs:
           cluster_id=$(jq -r ".[] | select(.cluster_name==\"$CLUSTER_NAME\") | .cluster_id" clusters.json)
           if [ -z "$cluster_id" ] || [ "$cluster_id" == "null" ]; then
             echo "Cluster $CLUSTER_NAME not found. Creating new cluster..."
-            cat <<cluster_file > cluster_config.json
+            cat <<'EOT' > cluster_config.json
             {
               "cluster_name": "$CLUSTER_NAME",
               "spark_version": "15.4.x-scala2.12",
@@ -170,6 +170,7 @@ jobs:
               "kind": "CLASSIC_PREVIEW",
               "is_single_node": true
             }
+            EOT
 
             databricks clusters create --json-file cluster_config.json
           else
