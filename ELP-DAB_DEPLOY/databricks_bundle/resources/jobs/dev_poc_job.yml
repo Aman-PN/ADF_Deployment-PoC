@@ -1,3 +1,16 @@
+# resources:
+#   jobs:
+#     dev_poc_job:
+#       name: dev_poc_job
+#       tasks:
+#         - task_key: Notebook_run
+#           notebook_task:
+#             notebook_path: /Workspace/Users/aman.nandgaule@tcs.com/ADF_Deployment-PoC/ELP-DAB_DEPLOY/databricks_bundle/notebooks/Hello_world.py
+#             source: WORKSPACE
+#           existing_cluster_id: 1011-183617-fo4vk9b2
+#       queue:
+#         enabled: true
+        
 resources:
   jobs:
     dev_poc_job:
@@ -5,6 +18,8 @@ resources:
       tasks:
         - task_key: Notebook_run
           notebook_task:
-            notebook_path: /Workspace/Users/aman.nandgaule@tcs.com/ADF_Deployment-PoC/ELP-DAB_DEPLOY/databricks_bundle/notebooks/Hello_world.py
+            notebook_path: ${workspace.root_path}/resources/notebooks/Hello_world.py
             source: WORKSPACE
           existing_cluster_id: 1011-183617-fo4vk9b2
+      queue:
+        enabled: true
