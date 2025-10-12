@@ -219,8 +219,8 @@ jobs:
           set -e
           cd "$DATABRICKS_BUNDLE_PATH"
           echo "Deploying bundle to target: ${{ inputs.environment }}"
-          # the target must be present in databricks.yml within the bundle (you'll create it later)
-          if databricks bundle deploy --target "${{ inputs.environment }}"; then
+          # the target must be present in databricks.yml within the bundle
+          if databricks bundle deploy --target "${{ inputs.environment }}" --force; then
             echo "✅ Databricks bundle deployed successfully to ${{ inputs.environment }}"
           else
             echo "❌ Databricks bundle deploy failed"
