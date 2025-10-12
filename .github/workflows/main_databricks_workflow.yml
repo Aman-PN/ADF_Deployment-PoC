@@ -4,18 +4,16 @@ on:
   workflow_call:
     inputs:
       environment:
-        description: 'Target deployment environment (dev, prod, etc)'
+        description: 'Target deployment environment (dev, stage, prod)'
         type: string
         required: true
         default: 'dev'
-        
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-
   User-Varification:
     runs-on: ubuntu-latest
     if: ( contains( inputs.environment, 'prod' ) || contains( inputs.environment, 'stage' ) )
@@ -37,8 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Approval Request
-        run: |
-          echo "Approval request sent.."
+        run: echo "Approval request sent.."
 
   full_dab_deployment:
     needs:
@@ -48,18 +45,13 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
-      # Reuse same variable names as your ADF workflow (fill in GitHub Environment vars accordingly)
-      #adfbranch: ${{ vars.ADFBRANCH }}
       subscriptionIdVariable: ${{ vars.ARM_SUBSCRIPTION_ID }}
       clientIdVariable: ${{ secrets.ARM_CLIENT_ID }}
       clientSecretVariable: ${{ secrets.ARM_CLIENT_SECRET }}
       tenantIdVariable: ${{ vars.ARM_TENANT_ID }}
       rsg: ${{ vars.RSG }}
-      #adf: ${{ vars.ADF }}
-      #arm_folder: ${{ vars.ARM_FOLDER }}
-      # Databricks-specific path and host (from your GitHub environment variables)
       DATABRICKS_BUNDLE_PATH: ELP-DAB_DEPLOY/databricks_bundle
-      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}    # e.g. https://adb-xxxx.xx.azuredatabricks.net
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
 
     steps:
       - name: Pipeline run information
@@ -70,15 +62,10 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
-        #with:
-        #  ref: ${{ vars.ADFBRANCH }}
-        #  path: ${{ vars.ARM_FOLDER }}
 
-      - name: Set up Python & jq
+      - name: Setup Python & jq
         run: |
-          python --version || true
-          sudo apt-get update -y
-          sudo apt-get install -y jq
+          sudo apt-get update -y && sudo apt-get install -y jq
           python -m pip install --upgrade pip
 
       - name: create replace parameters python script
@@ -123,20 +110,13 @@ jobs:
               globals()[args[1]](*args[2:])
           EOT
 
-      - name: Prepare PARAMETERIZATION for Databricks (review)
+      - name: Prepare PARAMETERIZATION for Databricks
         run: |
-          # We'll reuse the same PARAMETERIZATION var you already have in GitHub
-          # You can extend it with Databricks-specific mapping lines. Example placeholders (commented):
-          # dev-dab-ws,stage-dab-ws
-          # dev-cluster,stage-cluster
-          # dev-job,stage-job
           echo "${{ vars.PARAMETERIZATION }}" > parameters.txt
           echo "" >> parameters.txt
-          echo "# Add Databricks placeholders as needed (example):" >> parameters.txt
-          echo "# dev-dab-ws,stage-dab-ws" >> parameters.txt
-          echo "# dev-cluster,stage-cluster" >> parameters.txt
-          echo "# dev-job,stage-job" >> parameters.txt
-          echo "Contents of parameters.txt:"
+          echo "# Databricks cluster and job mapping" >> parameters.txt
+          echo "dev-databricks-cluster,stage-databricks-cluster" >> parameters.txt
+          echo "dev-databricks-cluster,prod-databricks-cluster" >> parameters.txt
           cat parameters.txt
 
       - name: Replace parameters inside bundle files
@@ -167,68 +147,70 @@ jobs:
           echo "azure_tenant_id = ${{ vars.ARM_TENANT_ID }}" >> ~/.databrickscfg
           echo "azure_client_id = ${{ secrets.ARM_CLIENT_ID}}" >> ~/.databrickscfg
           echo "azure_client_secret = ${{ secrets.ARM_CLIENT_SECRET}}" >> ~/.databrickscfg
-    
 
-      # - name: Get AAD token for Databricks and configure databricks CLI
-      #   id: configure_dbr
-      #   run: |
-      #     set -e
-      #     echo "Getting AAD token for Azure Databricks (resource id: c44b4083-3bb0-49c1-b47d-974e53cbdf3c)"
-      #     # Get access token for Azure Databricks service (will be used with databricks CLI)
-      #     token=$(az account get-access-token --resource c44b4083-3bb0-49c1-b47d-974e53cbdf3c --query accessToken -o tsv)
-      #     if [ -z "$token" ]; then
-      #       echo "ERROR: Failed to get AAD token for Databricks"
-      #       exit 1
-      #     fi
-      #     echo "Configuring databricks CLI with AAD token (host: $DATABRICKS_HOST)"
-      #     # The databricks CLI supports configuring an AAD token; pipe the token to the configure command
-      #     printf "%s\n" "$token" | databricks configure --aad-token --host "$DATABRICKS_HOST"
-      #     echo "Databricks CLI configured."
-      #     # export token for any commands that might read env var
-      #     echo "DATABRICKS_AAD_TOKEN<<EOF" >> $GITHUB_OUTPUT
-      #     echo "$token" >> $GITHUB_OUTPUT
-      #     echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Get current active job runs (stage/prod only)
-        if: contains(inputs.environment, 'stage') || contains(inputs.environment, 'prod')
+      # === Cluster Auto-Creation ===
+      - name: Ensure Databricks Cluster Exists
         run: |
           set -e
-          echo "Listing jobs in workspace..."
-          databricks jobs list --output JSON > jobs.json || (echo "No jobs found or failed to list jobs"; exit 0)
-          cat jobs.json | jq -r '.[] | .job_id' | tee job_ids.txt || true
-          if [ ! -s job_ids.txt ]; then
-            echo "No job ids found."
+          echo "Checking existing clusters..."
+          CLUSTER_NAME="${{ inputs.environment }}-databricks-cluster"
+          databricks clusters list --output JSON > clusters.json || true
+          cluster_id=$(jq -r ".[] | select(.cluster_name==\"$CLUSTER_NAME\") | .cluster_id" clusters.json)
+          if [ -z "$cluster_id" ] || [ "$cluster_id" == "null" ]; then
+            echo "Cluster $CLUSTER_NAME not found. Creating new cluster..."
+            cat <<EOF > cluster_config.json
+            {
+              "cluster_name": "$CLUSTER_NAME",
+              "spark_version": "15.4.x-scala2.12",
+              "node_type_id": "Standard_D4ds_v5",
+              "autotermination_minutes": 10,
+              "single_user_name": "aman.nandgaule@tcs.com",
+              "data_security_mode": "LEGACY_SINGLE_USER_STANDARD",
+              "runtime_engine": "PHOTON",
+              "kind": "CLASSIC_PREVIEW",
+              "is_single_node": true
+            }
+            EOF
+            databricks clusters create --json-file cluster_config.json
           else
-            echo "Checking active runs per job..."
-            while read -r jid; do
-              if [ -z "$jid" ]; then continue; fi
-              echo "Listing active runs for job id: $jid"
-              # list runs for job with active_only true (uses jobs API list-runs)
-              databricks runs list --job-id "$jid" --active-only --output JSON > runs_${jid}.json || true
-              # get run ids where state is not TERMINATED
-              jq -r '.[]?.run_id' runs_${jid}.json 2>/dev/null | while read -r runid; do
-                if [ -n "$runid" ]; then
-                  echo "Found active run id $runid for job $jid — attempting cancel"
-                  set +e
-                  databricks runs cancel --run-id "$runid" || echo "Warning: cancel may have failed for run $runid"
-                  set -e
-                  echo "Requested cancellation for run $runid (job $jid)"
-                fi
-              done
-            done < job_ids.txt
+            echo "Cluster $CLUSTER_NAME already exists (id: $cluster_id)"
           fi
 
-      # - name: Validate bundle
+      # === Deploy Job ===
+      - name: Deploy Databricks Jobs
+        run: |
+          set -e
+          echo "Deploying Databricks jobs..."
+          JOB_DIR="$DATABRICKS_BUNDLE_PATH/resources/jobs"
+          if [ -d "$JOB_DIR" ]; then
+            for jobFile in $(find "$JOB_DIR" -name '*.json'); do
+              JOB_NAME=$(jq -r '.name' "$jobFile")
+              echo "Processing job: $JOB_NAME"
+              job_id=$(databricks jobs list --output JSON | jq -r ".[] | select(.settings.name==\"$JOB_NAME\") | .job_id")
+              if [ -z "$job_id" ] || [ "$job_id" == "null" ]; then
+                echo "Creating new job: $JOB_NAME"
+                databricks jobs create --json-file "$jobFile"
+              else
+                echo "Updating existing job ($job_id)"
+                databricks jobs reset --job-id "$job_id" --json-file "$jobFile"
+              fi
+            done
+          else
+            echo "No job directory found at $JOB_DIR"
+          fi
+
+      # === Optional: Deploy Databricks Pipelines ===
+      # - name: Deploy Databricks Pipelines
       #   run: |
-      #     set -e
-      #     if [ ! -d "$DATABRICKS_BUNDLE_PATH" ]; then
-      #       echo "ERROR: bundle path $DATABRICKS_BUNDLE_PATH not found"
-      #       exit 1
+      #     echo "Pipeline deployment section - uncomment when ready"
+      #     PIPELINE_DIR="$DATABRICKS_BUNDLE_PATH/resources/pipelines"
+      #     if [ -d "$PIPELINE_DIR" ]; then
+      #       for pipe in $(find "$PIPELINE_DIR" -name '*.json'); do
+      #         echo "Deploying pipeline: $pipe"
+      #         databricks pipelines create --json-file "$pipe" || \
+      #           databricks pipelines edit --json-file "$pipe"
+      #       done
       #     fi
-      #     cd "$DATABRICKS_BUNDLE_PATH"
-      #     echo "Running databricks bundle validate in $(pwd)"
-      #     databricks bundle validate || (echo "Bundle validation failed"; exit 1)
-      #     cd - >/dev/null
 
       - name: Deploy bundle to target workspace
         run: |
@@ -243,14 +225,14 @@ jobs:
             exit 1
           fi
           cd - >/dev/null
-
-      - name: Post-deploy:verify jobs / list recent runs
+          
+      - name: Post-deploy verification
         run: |
-          echo "Post-deploy check: list top jobs (quick summary)"
-          databricks jobs list --output table || echo "Warning: failed to list jobs"
+          echo "Verifying deployed jobs..."
+          databricks jobs list --output table || true
 
-      - name: Cleanup temporary files
+      - name: Cleanup
         if: always()
         run: |
-          rm -f parameters.txt jobs.json job_ids.txt ls.txt || true
-          echo "Cleanup done."
+          rm -f parameters.txt cluster_config.json clusters.json || true
+          echo "Cleanup completed."
