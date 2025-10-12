@@ -207,8 +207,16 @@ jobs:
                               print(f"❌ Error reading YAML file {yaml_file}: {e}")
                               continue
 
+                      # Check top-level 'jobs' or 'resources.jobs'
+
+                      jobs_root = None
                       if "jobs" in job_def:
-                          for job_key, job_data in job_def["jobs"].items():
+                          jobs_root = job_def["jobs"]
+                      elif "resources" in job_def and "jobs" in job_def["resources"]:
+                          jobs_root = job_def["resources"]["jobs"]
+
+                      if jobs_root:
+                          for job_key, job_data in jobs_root.items():
                               job_name = job_data.get("name", job_key)
                               job_data["name"] = job_name
                               job_json_str = json.dumps(job_data, indent=2)
