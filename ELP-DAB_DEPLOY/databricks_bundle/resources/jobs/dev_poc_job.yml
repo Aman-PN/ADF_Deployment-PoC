@@ -8,5 +8,3 @@ resources:
             notebook_path: /Workspace/Users/aman.nandgaule@tcs.com/ADF_Deployment-PoC/ELP-DAB_DEPLOY/databricks_bundle/notebooks/Hello_world.py
             source: WORKSPACE
           existing_cluster_id: 1011-183617-fo4vk9b2
-      queue:
-        enabled: true
