@@ -182,60 +182,65 @@ jobs:
         run: |
           # Install PyYAML
           python -m pip install --upgrade pip pyyaml
-      
+
           # Create Python script to deploy jobs from YAML
           cat <<'EOT' > deploy_jobs_from_yaml.py
-      import os
-      import sys
-      import yaml
-      import json
-      import subprocess
-      
-      jobs_dir = sys.argv[1]
-      
-      for root, dirs, files in os.walk(jobs_dir):
-          for file in files:
-              if file.endswith((".yml", ".yaml")):
-                  yaml_file = os.path.join(root, file)
-                  with open(yaml_file, 'r') as f:
-                      try:
-                          job_def = yaml.safe_load(f)
-                      except yaml.YAMLError as e:
-                          print(f"Error reading YAML file {yaml_file}: {e}")
-                          continue
-      
-                  if "jobs" in job_def:
-                      for job_key, job_data in job_def["jobs"].items():
-                          job_name = job_data.get("name", job_key)
-                          job_data["name"] = job_name
-                          job_json_str = json.dumps(job_data)
-                          json_file_path = f"/tmp/{job_name}.json"
-                          with open(json_file_path, "w") as jf:
-                              jf.write(job_json_str)
-      
-                          try:
-                              jobs_list = subprocess.check_output("databricks jobs list --output JSON", shell=True)
-                              jobs_list = json.loads(jobs_list)
-                              job_id = None
-                              for j in jobs_list:
-                                  if j.get("settings", {}).get("name") == job_name:
-                                      job_id = j.get("job_id")
-                                      break
-      
-                              if job_id:
-                                  print(f"Updating existing job '{job_name}' (ID: {job_id})")
-                                  subprocess.run(f"databricks jobs reset --job-id {job_id} --json-file {json_file_path}", shell=True, check=True)
-                              else:
-                                  print(f"Creating new job '{job_name}'")
-                                  subprocess.run(f"databricks jobs create --json-file {json_file_path}", shell=True, check=True)
-                          except subprocess.CalledProcessError as e:
-                              print(f"Databricks CLI error: {e}")
-                              continue
-      EOT
-      
-          # Run the deployment
-          python deploy_jobs_from_yaml.py "$DATABRICKS_BUNDLE_PATH/resources/jobs"
+          import os
+          import sys
+          import yaml
+          import json
+          import subprocess
 
+          jobs_dir = sys.argv[1]
+
+          print(f"🔍 Scanning job directory: {jobs_dir}")
+
+          for root, dirs, files in os.walk(jobs_dir):
+              for file in files:
+                  if file.endswith((".yml", ".yaml")):
+                      yaml_file = os.path.join(root, file)
+                      print(f"📄 Processing YAML file: {yaml_file}")
+                      with open(yaml_file, 'r') as f:
+                          try:
+                              job_def = yaml.safe_load(f)
+                          except yaml.YAMLError as e:
+                              print(f"❌ Error reading YAML file {yaml_file}: {e}")
+                              continue
+
+                      if "jobs" in job_def:
+                          for job_key, job_data in job_def["jobs"].items():
+                              job_name = job_data.get("name", job_key)
+                              job_data["name"] = job_name
+                              job_json_str = json.dumps(job_data, indent=2)
+                              json_file_path = f"/tmp/{job_name}.json"
+                              with open(json_file_path, "w") as jf:
+                                  jf.write(job_json_str)
+
+                              print(f"⚙️ Deploying job: {job_name}")
+                              print(f"JSON payload:\n{job_json_str}")
+
+                              try:
+                                  jobs_list_output = subprocess.check_output("databricks jobs list --output JSON", shell=True)
+                                  jobs_list = json.loads(jobs_list_output)
+                                  job_id = None
+                                  for j in jobs_list:
+                                      if j.get("settings", {}).get("name") == job_name:
+                                          job_id = j.get("job_id")
+                                          break
+
+                                  if job_id:
+                                      print(f"🔄 Updating existing job '{job_name}' (ID: {job_id})")
+                                      subprocess.run(f"databricks jobs reset --job-id {job_id} --json-file {json_file_path}", shell=True, check=True)
+                                  else:
+                                      print(f"✅ Creating new job '{job_name}'")
+                                      subprocess.run(f"databricks jobs create --json-file {json_file_path}", shell=True, check=True)
+                              except subprocess.CalledProcessError as e:
+                                  print(f"❌ Databricks CLI error while deploying '{job_name}': {e}")
+                                  continue
+          EOT
+
+              # Run the deployment
+              python deploy_jobs_from_yaml.py "$DATABRICKS_BUNDLE_PATH/resources/jobs"
 
       # === Optional: Deploy Databricks Pipelines ===
       # - name: Deploy Databricks Pipelines
