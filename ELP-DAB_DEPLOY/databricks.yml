@@ -41,7 +41,7 @@ resources:
           notebook_task:
             notebook_path: ${workspace.root_path}/resources/notebooks/Hello_world.py
             source: WORKSPACE
-          cluster_name: "dev-databricks-cluster"
-          #existing_cluster_id: 1011-183617-fo4vk9b2
+          #cluster_name: "dev-databricks-cluster"
+          existing_cluster_id: 1011-183617-fo4vk9b2
       queue:
         enabled: true
