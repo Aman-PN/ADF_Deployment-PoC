@@ -181,58 +181,24 @@ jobs:
       - name: Deploy Databricks Jobs
         run: |
           set -e
-          pip install pyyaml
-          echo "🔍 Scanning job directory: $DATABRICKS_BUNDLE_PATH/resources/jobs"
-
-          python <<'PYCODE'
-          import os, json, subprocess, yaml
-
-          job_dir = os.environ["DATABRICKS_BUNDLE_PATH"] + "/resources/jobs"
-
-          for file in os.listdir(job_dir):
-              if not file.endswith((".yml", ".yaml")):
-                  continue
-              full_path = os.path.join(job_dir, file)
-              print(f"📄 Processing YAML file: {full_path}")
-
-              with open(full_path, "r") as f:
-                  data = yaml.safe_load(f)
-
-              jobs_root = data.get("resources", {}).get("jobs", {})
-              if not jobs_root:
-                  print(f"⚠️ No jobs found in {file}")
-                  continue
-
-              for job_key, job_data in jobs_root.items():
-                  job_name = job_data.get("name", job_key)
-                  job_data["name"] = job_name
-                  json_file = f"/tmp/{job_name}.json"
-                  with open(json_file, "w") as jf:
-                      json.dump(job_data, jf, indent=2)
-
-                  print(f"⚙️ Deploying job: {job_name}")
-
-                  # Fetch existing jobs
-                  jobs_output = subprocess.check_output("databricks jobs list --output JSON", shell=True)
-                  jobs = json.loads(jobs_output)
-                  job_id = None
-                  for j in jobs:
-                      if j.get("settings", {}).get("name") == job_name:
-                          job_id = j.get("job_id")
-                          break
-
-                  if job_id:
-                      print(f"🔄 Updating existing job '{job_name}' (ID: {job_id})")
-                      job_data["job_id"] = job_id
-                      update_json = f"/tmp/{job_name}_update.json"
-                      with open(update_json, "w") as uf:
-                          json.dump(job_data, uf, indent=2)
-                      subprocess.run(f"databricks jobs reset --json-file {update_json}", shell=True, check=True)
-                  else:
-                      print(f"🆕 Creating new job '{job_name}'")
-                      subprocess.run(f"databricks jobs create --json-file {json_file}", shell=True, check=True)
-
-          PYCODE
+          echo "Deploying Databricks jobs..."
+          JOB_DIR="$DATABRICKS_BUNDLE_PATH/resources/jobs"
+          if [ -d "$JOB_DIR" ]; then
+            for jobFile in $(find "$JOB_DIR" -name '*.json'); do
+              JOB_NAME=$(jq -r '.name' "$jobFile")
+              echo "Processing job: $JOB_NAME"
+              job_id=$(databricks jobs list --output JSON | jq -r ".[] | select(.settings.name==\"$JOB_NAME\") | .job_id")
+              if [ -z "$job_id" ] || [ "$job_id" == "null" ]; then
+                echo "Creating new job: $JOB_NAME"
+                databricks jobs create --json-file "$jobFile"
+              else
+                echo "Updating existing job ($job_id)"
+                databricks jobs reset --job-id "$job_id" --json-file "$jobFile"
+              fi
+            done
+          else
+            echo "No job directory found at $JOB_DIR"
+          fi
                   
 
       # === Optional: Deploy Databricks Pipelines ===
