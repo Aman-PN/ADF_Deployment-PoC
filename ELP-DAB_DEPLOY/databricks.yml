@@ -33,3 +33,6 @@ resources:
     hello_world:
       source: resources/notebooks/Hello_world.py
       path: ${workspace.root_path}/resources/notebooks/Hello_world.py
+  jobs:
+    dev_poc_job:
+      source: resources/jobs/dev_poc_job.yml
