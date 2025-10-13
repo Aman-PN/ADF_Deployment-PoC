@@ -225,7 +225,7 @@ jobs:
           databricks bundle validate
 
           echo "Deploying bundle..."
-          databricks bundle deploy --target "${{ inputs.environment }}"
+          databricks bundle deploy --target "${{ inputs.environment }} --force-lock"
 
           echo "✅ Bundle deployed successfully for ${{ inputs.environment }}"
           cd - >/dev/null
