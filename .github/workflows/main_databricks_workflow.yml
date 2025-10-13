@@ -63,26 +63,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ============================================
-      # ⚙️ Setup Python (with caching)
-      # ============================================
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      # ============================================
-      # ⚙️ Install jq only if missing
-      # ============================================
       - name: Ensure jq installed
         run: |
           if ! command -v jq &> /dev/null; then
-            echo "⚙️ Installing jq..."
             sudo apt-get update -y -qq
             sudo apt-get install -y -qq jq
           else
-            echo "✅ jq already present — skipping installation"
+            echo "✅ jq already present"
           fi
           
       - name: create replace parameters python script
