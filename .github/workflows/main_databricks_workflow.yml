@@ -242,7 +242,7 @@ jobs:
       - name: Post-deploy verification
         run: |
           echo "Verifying deployed jobs..."
-          databricks jobs list --output table || true
+          databricks jobs list --output text || true
 
       - name: Cleanup
         if: always()
