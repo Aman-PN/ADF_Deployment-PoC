@@ -307,7 +307,7 @@ jobs:
       - name: Activate Databricks Jobs
         run: |
           echo "Running bundle to activate jobs..."
-          cd "$DATABRICKS_BUNDLE_PATH"
+          cd "$DATABRICKS_BUNDLE_PATH/resources/jobs"
           databricks bundle run dev_poc_job --target ${{ inputs.environment }}
 
 
