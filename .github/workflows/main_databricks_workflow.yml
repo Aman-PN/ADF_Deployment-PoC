@@ -177,19 +177,19 @@ jobs:
               echo "Cluster $CLUSTER_NAME already exists (id: $cluster_id)"
           fi
 
-      # - name: Deploy bundle to target workspace
-      #   run: |
-      #     set -e
-      #     cd "$DATABRICKS_BUNDLE_PATH"
-      #     echo "Deploying bundle to target: ${{ inputs.environment }}"
-      #     # the target must be present in databricks.yml within the bundle
-      #     if databricks bundle deploy --target "${{ inputs.environment }}" --force; then
-      #       echo "✅ Databricks bundle deployed successfully to ${{ inputs.environment }}"
-      #     else
-      #       echo "❌ Databricks bundle deploy failed"
-      #       exit 1
-      #     fi
-      #     cd - >/dev/null
+      - name: Deploy bundle to target workspace
+        run: |
+          set -e
+          cd "$DATABRICKS_BUNDLE_PATH"
+          echo "Deploying bundle to target: ${{ inputs.environment }}"
+          # the target must be present in databricks.yml within the bundle
+          if databricks bundle deploy --target "${{ inputs.environment }}" --force; then
+            echo "✅ Databricks bundle deployed successfully to ${{ inputs.environment }}"
+          else
+            echo "❌ Databricks bundle deploy failed"
+            exit 1
+          fi
+          cd - >/dev/null
 
             #=== Deploy Job ===
       - name: Deploy Databricks Jobs
@@ -213,11 +213,6 @@ jobs:
           else
             echo "No job directory found at $JOB_DIR"
           fi
-
-        # === Deploy Bundle (existing step) ===
-      - name: Deploy Databricks Bundle
-        run: |
-          databricks bundle deploy --target ${{ inputs.environment }}
 
       # === Activate Jobs ===
       - name: Activate Databricks Jobs
