@@ -8,7 +8,7 @@ workspace:
 # Include all YAML resources separately
 # ---------------------------------------------
 include:
-  - resources/*.yml
+  - resources/**/*.yml
   
 targets:
   dev:
