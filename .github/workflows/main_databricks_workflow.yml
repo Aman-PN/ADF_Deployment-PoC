@@ -227,15 +227,6 @@ jobs:
           else
             echo "No job directory found at $JOB_DIR"
           fi
-
-      # === Activate Jobs ===
-      - name: Activate Databricks Jobs
-        run: |
-          echo "Running bundle to activate jobs..."
-          cd "$DATABRICKS_BUNDLE_PATH/resources/jobs"
-          databricks bundle run dev_poc_job --target ${{ inputs.environment }}
-
-
                   
       # === Optional: Deploy Databricks Pipelines ===
       # - name: Deploy Databricks Pipelines
