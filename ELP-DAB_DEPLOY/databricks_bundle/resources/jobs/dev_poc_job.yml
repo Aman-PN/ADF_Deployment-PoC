@@ -14,7 +14,7 @@
 resources:
   jobs:
     dev_poc_job:
-      name: dev_poc_job
+      name: "dev_poc_job"
       tasks:
         - task_key: Notebook_run
           notebook_task:
