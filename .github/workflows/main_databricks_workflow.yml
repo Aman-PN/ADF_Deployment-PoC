@@ -132,13 +132,67 @@ jobs:
       - name: Set up Databricks CLI
         uses: databricks/setup-cli@v0.220.0
 
-      - name: Azure Login (service principal)
+      # - name: Azure Login (service principal)
+      #   run: |
+      #     set -x
+      #     az login --service-principal -u ${{ secrets.ARM_CLIENT_ID }} -p ${{ secrets.ARM_CLIENT_SECRET }} -t ${{ vars.ARM_TENANT_ID }} --allow-no-subscriptions
+      #     az account set --subscription "${{ vars.ARM_SUBSCRIPTION_ID }}" || true
+      #     az config set extension.use_dynamic_install=yes_without_prompt
+      #     set +x
+
+      - name: Restore Azure CLI cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.azure
+          key: azure-cli-cache-${{ runner.os }}-${{ vars.ARM_TENANT_ID }}
+          restore-keys: |
+            azure-cli-cache-${{ runner.os }}-
+
+      - name: Azure Login (service principal with persistent cache)
         run: |
-          set -x
-          az login --service-principal -u ${{ secrets.ARM_CLIENT_ID }} -p ${{ secrets.ARM_CLIENT_SECRET }} -t ${{ vars.ARM_TENANT_ID }} --allow-no-subscriptions
+          set -e
+          echo "🔍 Checking for existing Azure CLI cache..."
+
+          AZURE_CACHE_DIR="$HOME/.azure"
+          TOKEN_FILE="$AZURE_CACHE_DIR/accessTokens.json"
+
+          # Check if cached token exists and valid
+          if [ -f "$TOKEN_FILE" ] && jq -e '.[0].expiresOn' "$TOKEN_FILE" >/dev/null 2>&1; then
+            EXPIRY=$(jq -r '.[0].expiresOn' "$TOKEN_FILE")
+            NOW=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            if [[ "$EXPIRY" > "$NOW" ]]; then
+              echo "✅ Cached Azure token valid until $EXPIRY"
+            else
+              echo "⚠️ Cached token expired — logging in again..."
+              rm -rf "$AZURE_CACHE_DIR"
+              az login --service-principal \
+                -u "${{ secrets.ARM_CLIENT_ID }}" \
+                -p "${{ secrets.ARM_CLIENT_SECRET }}" \
+                -t "${{ vars.ARM_TENANT_ID }}" \
+                --allow-no-subscriptions
+            fi
+          else
+            echo "⚠️ No valid cache found — performing fresh login..."
+            mkdir -p "$AZURE_CACHE_DIR"
+            az login --service-principal \
+              -u "${{ secrets.ARM_CLIENT_ID }}" \
+              -p "${{ secrets.ARM_CLIENT_SECRET }}" \
+              -t "${{ vars.ARM_TENANT_ID }}" \
+              --allow-no-subscriptions
+          fi
+
+          echo "🔧 Setting subscription..."
           az account set --subscription "${{ vars.ARM_SUBSCRIPTION_ID }}" || true
           az config set extension.use_dynamic_install=yes_without_prompt
-          set +x
+          echo "✅ Azure CLI authentication ready."
+
+      - name: Save Azure CLI cache
+        if: always()
+        uses: actions/cache@v4
+        with:
+          path: ~/.azure
+          key: azure-cli-cache-${{ runner.os }}-${{ vars.ARM_TENANT_ID }}
+
 
       - name: Configure Databricks CLI authentication
         run: |
@@ -218,6 +272,7 @@ jobs:
       - name: Activate Databricks Jobs
         run: |
           echo "Running bundle to activate jobs..."
+          cd "$DATABRICKS_BUNDLE_PATH"
           databricks bundle run dev_poc_job --target ${{ inputs.environment }}
 
 
