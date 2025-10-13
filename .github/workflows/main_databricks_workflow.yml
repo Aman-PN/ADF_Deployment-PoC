@@ -69,14 +69,24 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Ensure jq installed
+      # ============================================
+      # ⚙️ Setup Python & jq (Optimized)
+      # ============================================
+      - name: Setup Python & jq (cached)
         run: |
+          set -e
+          echo "🔍 Checking for jq..."
           if ! command -v jq &> /dev/null; then
+            echo "⚙️ jq not found — installing once..."
             sudo apt-get update -y -qq
             sudo apt-get install -y -qq jq
           else
-            echo "✅ jq already present"
+            echo "✅ jq already installed — skipping installation"
           fi
+
+          echo "🐍 Setting up Python..."
+          python -m ensurepip --upgrade >/dev/null 2>&1 || true
+          python -m pip install --quiet --upgrade pip
           
       - name: create replace parameters python script
         run: |
