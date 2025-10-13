@@ -63,12 +63,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
       # ============================================
       # ⚙️ Setup Python & jq (Optimized)
       # ============================================
@@ -87,7 +81,7 @@ jobs:
           echo "🐍 Setting up Python..."
           python -m ensurepip --upgrade >/dev/null 2>&1 || true
           python -m pip install --quiet --upgrade pip
-          
+
       - name: create replace parameters python script
         run: |
           # Recreate the exact replaceparams.py you use for ADF deployments
