@@ -63,11 +63,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python & jq
-        run: |
-          sudo apt-get update -y && sudo apt-get install -y jq
-          python -m pip install --upgrade pip
+      # ============================================
+      # ⚙️ Setup Python (with caching)
+      # ============================================
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
 
+      # ============================================
+      # ⚙️ Install jq only if missing
+      # ============================================
+      - name: Ensure jq installed
+        run: |
+          if ! command -v jq &> /dev/null; then
+            echo "⚙️ Installing jq..."
+            sudo apt-get update -y -qq
+            sudo apt-get install -y -qq jq
+          else
+            echo "✅ jq already present — skipping installation"
+          fi
+          
       - name: create replace parameters python script
         run: |
           # Recreate the exact replaceparams.py you use for ADF deployments
@@ -139,95 +156,38 @@ jobs:
       #     az account set --subscription "${{ vars.ARM_SUBSCRIPTION_ID }}" || true
       #     az config set extension.use_dynamic_install=yes_without_prompt
       #     set +x
-
       # ============================================
-      # 🧠 Restore Azure CLI cache
+      # 🔐 Azure Login (cached credentials)
       # ============================================
-      - name: Restore Azure CLI cache
-        id: restore_azure_cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.azure
-          key: azure-cli-cache-${{ runner.os }}-${{ vars.ARM_TENANT_ID }}
-          restore-keys: |
-            azure-cli-cache-${{ runner.os }}-
-
-      # ============================================
-      # 🔐 Azure Login with persistent cache
-      # ============================================
-      - name: Azure Login (service principal with persistent cache + secret detection)
-        id: azure_login
+      - name: Azure Login (cached)
+        id: azure-login
         run: |
           set -e
-          echo "🔍 Checking for existing Azure CLI cache and secret consistency..."
+          echo "🔍 Checking Azure login cache..."
 
-          AZURE_CACHE_DIR="$HOME/.azure"
-          META_FILE="$AZURE_CACHE_DIR/.auth_meta.json"
-          TOKEN_FILE="$AZURE_CACHE_DIR/accessTokens.json"
+          CACHE_DIR="$HOME/.azure"
+          mkdir -p "$CACHE_DIR"
 
-          mkdir -p "$AZURE_CACHE_DIR"
+          # Cache key based on credentials
+          CACHE_KEY="${{ secrets.ARM_CLIENT_ID }}-${{ vars.ARM_TENANT_ID }}"
+          CACHE_FILE="$CACHE_DIR/.login_cache"
 
-          # Compute current secret hash (client ID + tenant ID + client secret)
-          CURRENT_HASH=$(echo "${{ secrets.ARM_CLIENT_ID }}-${{ vars.ARM_TENANT_ID }}-${{ secrets.ARM_CLIENT_SECRET }}" | sha256sum | awk '{print $1}')
-
-          # Read previous hash (if available)
-          if [ -f "$META_FILE" ]; then
-            PREV_HASH=$(jq -r '.hash' "$META_FILE" 2>/dev/null || echo "")
+          if [[ -f "$CACHE_FILE" && $(cat "$CACHE_FILE") == "$CACHE_KEY" ]]; then
+            echo "✅ Using cached Azure login (skipping full login)"
           else
-            PREV_HASH=""
-          fi
-
-          # Check if secrets changed
-          if [ "$CURRENT_HASH" != "$PREV_HASH" ]; then
-            echo "⚠️ Azure credentials changed — clearing cache and forcing fresh login..."
-            rm -rf "$AZURE_CACHE_DIR"
-            mkdir -p "$AZURE_CACHE_DIR"
-            FORCE_LOGIN=true
-          fi
-
-          # Check token expiry
-          if [ -f "$TOKEN_FILE" ]; then
-            EXPIRY=$(jq -r '.[0].expiresOn // empty' "$TOKEN_FILE" || echo "")
-            NOW=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-            if [[ -n "$EXPIRY" && "$EXPIRY" > "$NOW" && "$FORCE_LOGIN" != "true" ]]; then
-              echo "✅ Cached Azure token still valid until $EXPIRY"
-              LOGIN_NEEDED=false
-            else
-              echo "⚠️ Cached token expired or invalid — will re-login"
-              LOGIN_NEEDED=true
-            fi
-          else
-            echo "⚠️ No existing token found — login required"
-            LOGIN_NEEDED=true
-          fi
-
-          if [ "$LOGIN_NEEDED" = true ]; then
-            echo "🔐 Performing Azure login..."
+            echo "🔐 Logging in to Azure using Service Principal..."
             az login --service-principal \
               -u "${{ secrets.ARM_CLIENT_ID }}" \
               -p "${{ secrets.ARM_CLIENT_SECRET }}" \
               -t "${{ vars.ARM_TENANT_ID }}" \
               --allow-no-subscriptions
+
+            az account set --subscription "${{ vars.ARM_SUBSCRIPTION_ID }}" || true
+            az config set extension.use_dynamic_install=yes_without_prompt
+
+            echo "$CACHE_KEY" > "$CACHE_FILE"
+            echo "💾 Cached Azure credentials for reuse"
           fi
-
-          echo "🔧 Setting subscription..."
-          az account set --subscription "${{ vars.ARM_SUBSCRIPTION_ID }}" || true
-          az config set extension.use_dynamic_install=yes_without_prompt
-
-          # Save new hash metadata
-          echo "{\"hash\":\"$CURRENT_HASH\"}" > "$META_FILE"
-
-          echo "✅ Azure CLI authentication completed successfully."
-
-      # ============================================
-      # 💾 Save Azure CLI cache
-      # ============================================
-      - name: Save Azure CLI cache
-        if: always()
-        uses: actions/cache@v4
-        with:
-          path: ~/.azure
-          key: azure-cli-cache-${{ runner.os }}-${{ vars.ARM_TENANT_ID }}
 
       - name: Configure Databricks CLI authentication
         run: |
