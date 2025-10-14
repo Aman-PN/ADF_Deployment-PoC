@@ -18,7 +18,7 @@ resources:
       tasks:
         - task_key: Notebook_run
           notebook_task:
-            notebook_path: ${workspace.root_path}/resources/notebooks/Hello_world.py
+            notebook_path: /Workspace/ELP-DAB_DEPLOY/databricks_bundle/files/databricks_bundle/resources/notebooks/Hello_world.py
             source: WORKSPACE
           existing_cluster_id: 1011-183617-fo4vk9b2
       queue:
