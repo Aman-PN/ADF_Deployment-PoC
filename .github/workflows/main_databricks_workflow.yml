@@ -204,11 +204,11 @@ jobs:
           databricks bundle deploy --target "${{ inputs.environment }}"
 
       # # 7. (Optional) Trigger the deployed job
-      # - name: Run deployed job
-      #   if: success()
-      #   working-directory: ./ELP-DAB_DEPLOY/databricks_bundle
-      #   run: |
-      #     databricks bundle run dev_poc_job --target "${{ inputs.environment }}"
+      - name: Run deployed job
+        if: success()
+        working-directory: ./ELP-DAB_DEPLOY/databricks_bundle
+        run: |
+          databricks bundle run dev_poc_job --target "${{ inputs.environment }}"
 
       # - name: Deploy bundle to target workspace
       #   run: |
