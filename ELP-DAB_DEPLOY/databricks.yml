@@ -31,5 +31,5 @@ resources:
   # Deploy Notebooks
   notebooks:
     hello_world:
-      source: resources/notebooks/Hello_world.py
-      path: ${workspace.root_path}/resources/notebooks/Hello_world.py
+      source: resources/notebooks/Notebook1.ipynb
+      path: ${workspace.root_path}/resources/notebooks/Notebook1.ipynb
