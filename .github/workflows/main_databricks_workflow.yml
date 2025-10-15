@@ -63,6 +63,84 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        #with:
+        #  ref: ${{ vars.ADFBRANCH }}
+        #  path: ${{ vars.ARM_FOLDER }}
+
+      - name: Set up Python & jq
+        run: |
+          python --version || true
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          python -m pip install --upgrade pip
+
+      - name: create replace parameters python script
+        run: |
+          # Recreate the exact replaceparams.py you use for ADF deployments
+          cat <<'EOT' > replaceparams.py
+          """
+              This program finds and replaces source environment variables with
+              target environment variables
+          """
+          import os, sys
+          from csv import reader
+
+          def replaceString(fileName, sourceSetting, targetSetting):
+              with open(fileName, "rt") as fin:
+                  data = fin.read()
+              data = data.replace(sourceSetting, targetSetting)
+              with open(fileName, "wt") as fout:
+                  fout.write(data)
+
+          def getFileNames(directoryName):
+              fileList = []
+              for (root, dirs, files) in os.walk(directoryName):
+                  for f in files:
+                      if '.json' in f or '.yml' in f or '.yaml' in f:
+                          fileList.append(os.path.join(root, f))
+              return fileList
+
+          def prepareFiles(sourceDirectory, nameValuePairFile):
+              with open(nameValuePairFile, 'r') as read_obj:
+                  csv_reader = reader(read_obj)
+                  list_of_rows = list(csv_reader)
+                  list_of_files = getFileNames(sourceDirectory)
+                  for fileName in list_of_files:
+                      print("Replacing in file: {}".format(fileName))
+                      for item in list_of_rows:
+                          if len(item) >= 2:
+                              replaceString(fileName, item[0], item[1])
+
+          if __name__ == '__main__':
+              args = sys.argv
+              globals()[args[1]](*args[2:])
+          EOT
+
+      - name: Prepare PARAMETERIZATION for Databricks (review)
+        run: |
+          # We'll reuse the same PARAMETERIZATION var you already have in GitHub
+          # You can extend it with Databricks-specific mapping lines. Example placeholders (commented):
+          # dev-dab-ws,stage-dab-ws
+          # dev-cluster,stage-cluster
+          # dev-job,stage-job
+          echo "${{ vars.PARAMETERIZATION }}" > parameters.txt
+          echo "" >> parameters.txt
+          echo "# Add Databricks placeholders as needed (example):" >> parameters.txt
+          echo "# dev-dab-ws,stage-dab-ws" >> parameters.txt
+          echo "# dev-cluster,stage-cluster" >> parameters.txt
+          echo "# dev-job,stage-job" >> parameters.txt
+          echo "Contents of parameters.txt:"
+          cat parameters.txt
+
+      - name: Replace parameters inside bundle files
+        run: |
+          # Only replace inside the specific databricks bundle folder
+          if [ -d "$DATABRICKS_BUNDLE_PATH" ]; then
+            python replaceparams.py prepareFiles "$DATABRICKS_BUNDLE_PATH" parameters.txt
+          else
+            echo "ERROR: Databricks bundle folder '$DATABRICKS_BUNDLE_PATH' not found."
+            exit 1
+          fi
 
       # ============================================
       # ⚙️ Setup Python & jq (Optimized)
@@ -162,6 +240,68 @@ jobs:
           echo "azure_tenant_id = ${{ vars.ARM_TENANT_ID }}" >> ~/.databrickscfg
           echo "azure_client_id = ${{ secrets.ARM_CLIENT_ID}}" >> ~/.databrickscfg
           echo "azure_client_secret = ${{ secrets.ARM_CLIENT_SECRET}}" >> ~/.databrickscfg
+    
+
+      # - name: Get AAD token for Databricks and configure databricks CLI
+      #   id: configure_dbr
+      #   run: |
+      #     set -e
+      #     echo "Getting AAD token for Azure Databricks (resource id: c44b4083-3bb0-49c1-b47d-974e53cbdf3c)"
+      #     # Get access token for Azure Databricks service (will be used with databricks CLI)
+      #     token=$(az account get-access-token --resource c44b4083-3bb0-49c1-b47d-974e53cbdf3c --query accessToken -o tsv)
+      #     if [ -z "$token" ]; then
+      #       echo "ERROR: Failed to get AAD token for Databricks"
+      #       exit 1
+      #     fi
+      #     echo "Configuring databricks CLI with AAD token (host: $DATABRICKS_HOST)"
+      #     # The databricks CLI supports configuring an AAD token; pipe the token to the configure command
+      #     printf "%s\n" "$token" | databricks configure --aad-token --host "$DATABRICKS_HOST"
+      #     echo "Databricks CLI configured."
+      #     # export token for any commands that might read env var
+      #     echo "DATABRICKS_AAD_TOKEN<<EOF" >> $GITHUB_OUTPUT
+      #     echo "$token" >> $GITHUB_OUTPUT
+      #     echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Get current active job runs (stage/prod only)
+        if: contains(inputs.environment, 'stage') || contains(inputs.environment, 'prod')
+        run: |
+          set -e
+          echo "Listing jobs in workspace..."
+          databricks jobs list --output JSON > jobs.json || (echo "No jobs found or failed to list jobs"; exit 0)
+          cat jobs.json | jq -r '.[] | .job_id' | tee job_ids.txt || true
+          if [ ! -s job_ids.txt ]; then
+            echo "No job ids found."
+          else
+            echo "Checking active runs per job..."
+            while read -r jid; do
+              if [ -z "$jid" ]; then continue; fi
+              echo "Listing active runs for job id: $jid"
+              # list runs for job with active_only true (uses jobs API list-runs)
+              databricks runs list --job-id "$jid" --active-only --output JSON > runs_${jid}.json || true
+              # get run ids where state is not TERMINATED
+              jq -r '.[]?.run_id' runs_${jid}.json 2>/dev/null | while read -r runid; do
+                if [ -n "$runid" ]; then
+                  echo "Found active run id $runid for job $jid — attempting cancel"
+                  set +e
+                  databricks runs cancel --run-id "$runid" || echo "Warning: cancel may have failed for run $runid"
+                  set -e
+                  echo "Requested cancellation for run $runid (job $jid)"
+                fi
+              done
+            done < job_ids.txt
+          fi
+
+      # - name: Validate bundle
+      #   run: |
+      #     set -e
+      #     if [ ! -d "$DATABRICKS_BUNDLE_PATH" ]; then
+      #       echo "ERROR: bundle path $DATABRICKS_BUNDLE_PATH not found"
+      #       exit 1
+      #     fi
+      #     cd "$DATABRICKS_BUNDLE_PATH"
+      #     echo "Running databricks bundle validate in $(pwd)"
+      #     databricks bundle validate || (echo "Bundle validation failed"; exit 1)
+      #     cd - >/dev/null
 
       # Configure Databricks CLI
       - name: Configure Databricks CLI
