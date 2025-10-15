@@ -4,18 +4,16 @@ on:
   workflow_call:
     inputs:
       environment:
-        description: 'Target deployment environment (dev, prod, etc)'
+        description: 'Target deployment environment (dev, stage, prod)'
         type: string
         required: true
         default: 'dev'
-        
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-
   User-Varification:
     runs-on: ubuntu-latest
     if: ( contains( inputs.environment, 'prod' ) || contains( inputs.environment, 'stage' ) )
@@ -37,8 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Approval Request
-        run: |
-          echo "Approval request sent.."
+        run: echo "Approval request sent.."
 
   full_dab_deployment:
     needs:
@@ -48,18 +45,14 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
-      # Reuse same variable names as your ADF workflow (fill in GitHub Environment vars accordingly)
-      #adfbranch: ${{ vars.ADFBRANCH }}
       subscriptionIdVariable: ${{ vars.ARM_SUBSCRIPTION_ID }}
       clientIdVariable: ${{ secrets.ARM_CLIENT_ID }}
       clientSecretVariable: ${{ secrets.ARM_CLIENT_SECRET }}
       tenantIdVariable: ${{ vars.ARM_TENANT_ID }}
       rsg: ${{ vars.RSG }}
-      #adf: ${{ vars.ADF }}
-      #arm_folder: ${{ vars.ARM_FOLDER }}
-      # Databricks-specific path and host (from your GitHub environment variables)
       DATABRICKS_BUNDLE_PATH: ELP-DAB_DEPLOY/databricks_bundle
-      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}    # e.g. https://adb-xxxx.xx.azuredatabricks.net
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
 
     steps:
       - name: Pipeline run information
@@ -137,6 +130,86 @@ jobs:
           echo "# dev-cluster,stage-cluster" >> parameters.txt
           echo "# dev-job,stage-job" >> parameters.txt
           echo "Contents of parameters.txt:"
+          cat parameters.txt
+
+      - name: Replace parameters inside bundle files
+        run: |
+          # Only replace inside the specific databricks bundle folder
+          if [ -d "$DATABRICKS_BUNDLE_PATH" ]; then
+            python replaceparams.py prepareFiles "$DATABRICKS_BUNDLE_PATH" parameters.txt
+          else
+            echo "ERROR: Databricks bundle folder '$DATABRICKS_BUNDLE_PATH' not found."
+            exit 1
+          fi
+
+      # ============================================
+      # ⚙️ Setup Python & jq (Optimized)
+      # ============================================
+      - name: Setup Python & jq (cached)
+        run: |
+          set -e
+          echo "🔍 Checking for jq..."
+          if ! command -v jq &> /dev/null; then
+            echo "⚙️ jq not found — installing once..."
+            sudo apt-get update -y -qq
+            sudo apt-get install -y -qq jq
+          else
+            echo "✅ jq already installed — skipping installation"
+          fi
+
+          echo "🐍 Setting up Python..."
+          python -m ensurepip --upgrade >/dev/null 2>&1 || true
+          python -m pip install --quiet --upgrade pip
+
+      - name: create replace parameters python script
+        run: |
+          # Recreate the exact replaceparams.py you use for ADF deployments
+          cat <<'EOT' > replaceparams.py
+          """
+              This program finds and replaces source environment variables with
+              target environment variables
+          """
+          import os, sys
+          from csv import reader
+
+          def replaceString(fileName, sourceSetting, targetSetting):
+              with open(fileName, "rt") as fin:
+                  data = fin.read()
+              data = data.replace(sourceSetting, targetSetting)
+              with open(fileName, "wt") as fout:
+                  fout.write(data)
+
+          def getFileNames(directoryName):
+              fileList = []
+              for (root, dirs, files) in os.walk(directoryName):
+                  for f in files:
+                      if '.json' in f or '.yml' in f or '.yaml' in f:
+                          fileList.append(os.path.join(root, f))
+              return fileList
+
+          def prepareFiles(sourceDirectory, nameValuePairFile):
+              with open(nameValuePairFile, 'r') as read_obj:
+                  csv_reader = reader(read_obj)
+                  list_of_rows = list(csv_reader)
+                  list_of_files = getFileNames(sourceDirectory)
+                  for fileName in list_of_files:
+                      print("Replacing in file: {}".format(fileName))
+                      for item in list_of_rows:
+                          if len(item) >= 2:
+                              replaceString(fileName, item[0], item[1])
+
+          if __name__ == '__main__':
+              args = sys.argv
+              globals()[args[1]](*args[2:])
+          EOT
+
+      - name: Prepare PARAMETERIZATION for Databricks
+        run: |
+          echo "${{ vars.PARAMETERIZATION }}" > parameters.txt
+          echo "" >> parameters.txt
+          echo "# Databricks cluster and job mapping" >> parameters.txt
+          echo "dev-databricks-cluster,stage-databricks-cluster" >> parameters.txt
+          echo "dev-databricks-cluster,prod-databricks-cluster" >> parameters.txt
           cat parameters.txt
 
       - name: Replace parameters inside bundle files
@@ -230,27 +303,89 @@ jobs:
       #     databricks bundle validate || (echo "Bundle validation failed"; exit 1)
       #     cd - >/dev/null
 
-      - name: Deploy bundle to target workspace
+      # Configure Databricks CLI
+      - name: Configure Databricks CLI
+        run: |
+          databricks configure --host $DATABRICKS_HOST --token $DATABRICKS_TOKEN
+
+      # === Cluster Auto-Creation ===
+      - name: Ensure Databricks Cluster Exists
         run: |
           set -e
-          cd "$DATABRICKS_BUNDLE_PATH"
-          echo "Deploying bundle to target: ${{ inputs.environment }}"
-          # the target must be present in databricks.yml within the bundle (you'll create it later)
-          if databricks bundle deploy --target "${{ inputs.environment }}"; then
-            echo "✅ Databricks bundle deployed successfully to ${{ inputs.environment }}"
+          echo "Checking existing clusters..."
+          CLUSTER_NAME="${{ inputs.environment }}-databricks-cluster"
+          databricks clusters list --output JSON > clusters.json || true
+          cluster_id=$(jq -r ".[] | select(.cluster_name==\"$CLUSTER_NAME\") | .cluster_id" clusters.json)
+          if [ -z "$cluster_id" ] || [ "$cluster_id" == "null" ]; then
+              echo "Cluster $CLUSTER_NAME not found. Creating new cluster..."
+          cat <<EOT > cluster_config.json
+          {
+            "cluster_name": "$CLUSTER_NAME",
+            "spark_version": "15.4.x-scala2.12",
+            "node_type_id": "Standard_D4ds_v5",
+            "autotermination_minutes": 10,
+            "single_user_name": "aman.nandgaule@tcs.com",
+            "data_security_mode": "LEGACY_SINGLE_USER_STANDARD",
+            "runtime_engine": "PHOTON",
+            "kind": "CLASSIC_PREVIEW",
+            "is_single_node": true
+          }
+          EOT
+          
+              databricks clusters create --json-file cluster_config.json
           else
-            echo "❌ Databricks bundle deploy failed"
-            exit 1
+              echo "Cluster $CLUSTER_NAME already exists (id: $cluster_id)"
           fi
-          cd - >/dev/null
 
-      - name: Post-deploy:verify jobs / list recent runs
+      # 6. Deploy Databricks Asset Bundle
+      - name: Deploy Databricks bundle
+        working-directory: ./ELP-DAB_DEPLOY/databricks_bundle
         run: |
-          echo "Post-deploy check: list top jobs (quick summary)"
-          databricks jobs list --output table || echo "Warning: failed to list jobs"
+          databricks bundle deploy --target "${{ inputs.environment }}"
 
-      - name: Cleanup temporary files
+      # # 7. (Optional) Trigger the deployed job
+      # - name: Run deployed job
+      #   if: success()
+      #   working-directory: ./ELP-DAB_DEPLOY/databricks_bundle
+      #   run: |
+      #     databricks bundle run dev_poc_job --target "${{ inputs.environment }}"
+
+      # - name: Deploy bundle to target workspace
+      #   run: |
+      #     set -e
+      #     cd "$DATABRICKS_BUNDLE_PATH"
+      #     echo "Deploying bundle to target: ${{ inputs.environment }}"
+      #     # the target must be present in databricks.yml within the bundle
+      #     if databricks bundle deploy --target "${{ inputs.environment }}" --force; then
+      #       echo "✅ Databricks bundle deployed successfully to ${{ inputs.environment }}"
+      #     else
+      #       echo "❌ Databricks bundle deploy failed"
+      #       exit 1
+      #     fi
+      #     cd - >/dev/null
+                  
+      # === Optional: Deploy Databricks Pipelines ===
+      # - name: Deploy Databricks Pipelines
+      #   run: |
+      #     echo "Pipeline deployment section - uncomment when ready"
+      #     PIPELINE_DIR="$DATABRICKS_BUNDLE_PATH/resources/pipelines"
+      #     if [ -d "$PIPELINE_DIR" ]; then
+      #       for pipe in $(find "$PIPELINE_DIR" -name '*.json'); do
+      #         echo "Deploying pipeline: $pipe"
+      #         databricks pipelines create --json-file "$pipe" || \
+      #           databricks pipelines edit --json-file "$pipe"
+      #       done
+      #     fi
+
+
+          
+      - name: Post-deploy verification
+        run: |
+          echo "Verifying deployed jobs..."
+          databricks jobs list --output text || true
+
+      - name: Cleanup
         if: always()
         run: |
-          rm -f parameters.txt jobs.json job_ids.txt ls.txt || true
-          echo "Cleanup done."
+          rm -f parameters.txt cluster_config.json clusters.json || true
+          echo "Cleanup completed."
