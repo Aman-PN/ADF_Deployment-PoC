@@ -5,7 +5,7 @@ resources:
       tasks:
         - task_key: Notebook_run
           notebook_task:
-            notebook_path: Workspace/ELP-DAB_DEPLOY/databricks_bundle/files/databricks_bundle/resources/notebooks/Notebook1.ipynb
+            notebook_path: Workspace/ELP-DAB_DEPLOY/databricks_bundle/resources/notebooks/Notebook1.ipynb
             source: WORKSPACE
           existing_cluster_id: 1011-183617-fo4vk9b2
       queue:
