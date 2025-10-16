@@ -1,10 +1,10 @@
 name: Databricks_Deployment(Full)
 
 on:
-  # push:
-  #   branches:
-  #     - develop
-  #     - stage
+  push:
+    branches:
+      - develop
+      - stage
       
   workflow_dispatch:
     inputs:

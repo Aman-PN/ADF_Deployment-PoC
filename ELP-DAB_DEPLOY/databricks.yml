@@ -7,8 +7,8 @@ workspace:
 # ---------------------------------------------
 # Include all YAML resources separately
 # ---------------------------------------------
-include:
-  - resources/**/*.yml
+# include:
+#   - resources/**/*.yml
   
 targets:
   dev:
@@ -27,9 +27,13 @@ targets:
   #     host: https://adb-4056904538165901.1.azuredatabricks.net/
   #     root_path: /Workspace/ADF_Deployment-PoC/prod/ELP-DAB_DEPLOY/databricks_bundle
 
+
+artifacts:
+  hello_world:
+    type: notebook
+    path: ${workspace.root_path}/resources/notebooks/Notebook1.ipynb
+
 resources:
-  # Deploy Notebooks
-  notebooks:
-    hello_world:
-      source: resources/notebooks/Notebook1.ipynb
-      path: ${workspace.root_path}/resources/notebooks/Notebook1.ipynb
+  jobs:
+    dev_poc_job:
+      path: ${workspace.root_path}/resources/jobs/dev_poc_job.yml

@@ -240,28 +240,12 @@ jobs:
           echo "azure_tenant_id = ${{ vars.ARM_TENANT_ID }}" >> ~/.databrickscfg
           echo "azure_client_id = ${{ secrets.ARM_CLIENT_ID}}" >> ~/.databrickscfg
           echo "azure_client_secret = ${{ secrets.ARM_CLIENT_SECRET}}" >> ~/.databrickscfg
+
+        # Configure Databricks CLI
+      - name: Configure Databricks CLI
+        run: |
+          databricks configure --host $DATABRICKS_HOST --token $DATABRICKS_TOKEN
     
-
-      # - name: Get AAD token for Databricks and configure databricks CLI
-      #   id: configure_dbr
-      #   run: |
-      #     set -e
-      #     echo "Getting AAD token for Azure Databricks (resource id: c44b4083-3bb0-49c1-b47d-974e53cbdf3c)"
-      #     # Get access token for Azure Databricks service (will be used with databricks CLI)
-      #     token=$(az account get-access-token --resource c44b4083-3bb0-49c1-b47d-974e53cbdf3c --query accessToken -o tsv)
-      #     if [ -z "$token" ]; then
-      #       echo "ERROR: Failed to get AAD token for Databricks"
-      #       exit 1
-      #     fi
-      #     echo "Configuring databricks CLI with AAD token (host: $DATABRICKS_HOST)"
-      #     # The databricks CLI supports configuring an AAD token; pipe the token to the configure command
-      #     printf "%s\n" "$token" | databricks configure --aad-token --host "$DATABRICKS_HOST"
-      #     echo "Databricks CLI configured."
-      #     # export token for any commands that might read env var
-      #     echo "DATABRICKS_AAD_TOKEN<<EOF" >> $GITHUB_OUTPUT
-      #     echo "$token" >> $GITHUB_OUTPUT
-      #     echo "EOF" >> $GITHUB_OUTPUT
-
       - name: Get current active job runs (stage/prod only)
         if: contains(inputs.environment, 'stage') || contains(inputs.environment, 'prod')
         run: |
@@ -303,10 +287,6 @@ jobs:
       #     databricks bundle validate || (echo "Bundle validation failed"; exit 1)
       #     cd - >/dev/null
 
-      # Configure Databricks CLI
-      - name: Configure Databricks CLI
-        run: |
-          databricks configure --host $DATABRICKS_HOST --token $DATABRICKS_TOKEN
 
       # === Cluster Auto-Creation ===
       - name: Ensure Databricks Cluster Exists
@@ -343,12 +323,12 @@ jobs:
         run: |
           databricks bundle deploy --target "${{ inputs.environment }}"
 
-      # # 7. (Optional) Trigger the deployed job
-      # - name: Run deployed job
-      #   if: success()
-      #   working-directory: ./ELP-DAB_DEPLOY/databricks_bundle
-      #   run: |
-      #     databricks bundle run dev_poc_job --target "${{ inputs.environment }}"
+      # 7. (Optional) Trigger the deployed job
+      - name: Run deployed job
+        if: success()
+        working-directory: ./ELP-DAB_DEPLOY/databricks_bundle
+        run: |
+          databricks bundle run dev_poc_job --target "${{ inputs.environment }}"
 
       # - name: Deploy bundle to target workspace
       #   run: |
