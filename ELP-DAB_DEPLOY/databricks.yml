@@ -28,10 +28,10 @@ targets:
   #     root_path: /Workspace/ADF_Deployment-PoC/prod/ELP-DAB_DEPLOY/databricks_bundle
 
 
-artifacts:
-  hello_world:
-    type: notebook
-    path: ${workspace.root_path}/resources/notebooks/Notebook1.ipynb
+# artifacts:
+#   hello_world:
+#     type: notebook
+#     path: ${workspace.root_path}/resources/notebooks/Notebook1.ipynb
 
 resources:
   jobs:
