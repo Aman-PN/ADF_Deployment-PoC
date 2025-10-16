@@ -36,4 +36,4 @@ artifacts:
 resources:
   jobs:
     job15:
-      path: ${workspace.root_path}/resources/jobs/job15.yml
+      path: ${workspace.root_path}/resources/jobs/job15.py
