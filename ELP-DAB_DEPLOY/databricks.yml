@@ -35,5 +35,5 @@ artifacts:
 
 resources:
   jobs:
-    dev_poc_job:
-      path: ${workspace.root_path}/resources/jobs/dev_poc_job.yml
+    job15:
+      path: ${workspace.root_path}/resources/jobs/job15.yml
