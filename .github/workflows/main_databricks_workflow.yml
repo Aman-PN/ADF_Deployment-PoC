@@ -297,6 +297,8 @@ jobs:
         env:
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+        run: |
+          databricks bundle deploy --target "${{ inputs.environment }}"
 
       # # 6. Deploy Databricks Asset Bundle
       # - name: Deploy Databricks bundle
