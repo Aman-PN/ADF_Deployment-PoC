@@ -194,10 +194,6 @@ jobs:
 
       - name: Set up Databricks CLI
         uses: databricks/setup-cli@v0.248.0
-    
-      # - name: Install Databricks CLI
-      #   run: |
-      #     pip install databricks-bundles==0.248.0
 
       - name: Azure Login (service principal)
         run: |
@@ -249,19 +245,6 @@ jobs:
             done < job_ids.txt
           fi
 
-      # - name: Validate bundle
-      #   run: |
-      #     set -e
-      #     if [ ! -d "$DATABRICKS_BUNDLE_PATH" ]; then
-      #       echo "ERROR: bundle path $DATABRICKS_BUNDLE_PATH not found"
-      #       exit 1
-      #     fi
-      #     cd "$DATABRICKS_BUNDLE_PATH"
-      #     echo "Running databricks bundle validate in $(pwd)"
-      #     databricks bundle validate || (echo "Bundle validation failed"; exit 1)
-      #     cd - >/dev/null
-
-
       # === Cluster Auto-Creation ===
       - name: Ensure Databricks Cluster Exists
         run: |
@@ -300,32 +283,12 @@ jobs:
         run: |
           databricks bundle deploy --target "${{ inputs.environment }}"
 
-      # # 6. Deploy Databricks Asset Bundle
-      # - name: Deploy Databricks bundle
-      #   working-directory: ./ELP-DAB_DEPLOY/databricks_bundle
-      #   run: |
-      #     databricks bundle deploy --target "${{ inputs.environment }}"
-
       # 7. (Optional) Trigger the deployed job
       - name: Run deployed job
-        #if: success()
-        working-directory: ./ELP-DAB_DEPLOY/databricks_bundle
+        if: success()
+        working-directory: ./ELP-DAB_DEPLOY/databricks_bundle/resources/
         run: |
           databricks bundle run job15 --target "${{ inputs.environment }}"
-
-      # - name: Deploy bundle to target workspace
-      #   run: |
-      #     set -e
-      #     cd "$DATABRICKS_BUNDLE_PATH"
-      #     echo "Deploying bundle to target: ${{ inputs.environment }}"
-      #     # the target must be present in databricks.yml within the bundle
-      #     if databricks bundle deploy --target "${{ inputs.environment }}" --force; then
-      #       echo "✅ Databricks bundle deployed successfully to ${{ inputs.environment }}"
-      #     else
-      #       echo "❌ Databricks bundle deploy failed"
-      #       exit 1
-      #     fi
-      #     cd - >/dev/null
                   
       # === Optional: Deploy Databricks Pipelines ===
       # - name: Deploy Databricks Pipelines
@@ -339,9 +302,7 @@ jobs:
       #           databricks pipelines edit --json-file "$pipe"
       #       done
       #     fi
-
-
-          
+   
       - name: Post-deploy verification
         run: |
           echo "Verifying deployed jobs..."
