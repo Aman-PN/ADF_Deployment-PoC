@@ -7,8 +7,9 @@ workspace:
 # ---------------------------------------------
 # Include all YAML resources separately
 # ---------------------------------------------
-# include:
-#   - resources/**/*.yml
+include:
+  - resources/jobs/*.py
+  - resources/notebooks/*.ipynb
   
 targets:
   dev:
