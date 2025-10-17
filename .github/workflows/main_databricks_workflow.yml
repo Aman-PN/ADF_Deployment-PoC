@@ -193,7 +193,7 @@ jobs:
           fi
 
       - name: Set up Databricks CLI
-        uses: databricks/setup-cli@v0.220.0
+        uses: databricks/setup-cli@v0.248.0
     
       # - name: Install Databricks CLI
       #   run: |
