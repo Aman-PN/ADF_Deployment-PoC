@@ -293,7 +293,8 @@ jobs:
         run: |
           set -e
           echo "Checking existing clusters..."
-          CLUSTER_NAME="${{ inputs.environment }}-databricks-cluster"
+#         CLUSTER_NAME="${{ inputs.environment }}-databricks-cluster"
+          CLUSTER_NAME="SS's Cluster 2025-10-06"
           databricks clusters list --output JSON > clusters.json || true
           cluster_id=$(jq -r ".[] | select(.cluster_name==\"$CLUSTER_NAME\") | .cluster_id" clusters.json)
           if [ -z "$cluster_id" ] || [ "$cluster_id" == "null" ]; then
@@ -325,7 +326,7 @@ jobs:
 
       # 7. (Optional) Trigger the deployed job
       - name: Run deployed job
-        if: success()
+        #if: success()
         working-directory: ./ELP-DAB_DEPLOY/databricks_bundle
         run: |
           databricks bundle run job15 --target "${{ inputs.environment }}"
