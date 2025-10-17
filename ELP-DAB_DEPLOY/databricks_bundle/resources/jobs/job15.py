@@ -12,7 +12,7 @@ job_15 = Job.from_dict(
             {
                 "task_key": "runt_the_notebook",
                 "notebook_task": {
-                    "notebook_path": "/Workspace/Users/aman.nandgaule@tcs.com/Notebooks/Notebook1.ipynb",
+                    "notebook_path": "/Workspace/ELP-DAB_DEPLOY/databricks_bundle/files/databricks_bundle/resources/notebooks/Notebook1.ipynb",
                     "source": "WORKSPACE",
                 },
                 "existing_cluster_id": "1017-154210-95uerbaw",
