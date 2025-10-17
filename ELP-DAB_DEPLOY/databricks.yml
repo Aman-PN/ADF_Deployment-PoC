@@ -31,4 +31,5 @@ targets:
 
 resources:
   jobs:
-    job_15: !include ELP-DAB_DEPLOY/databricks_bundle/resources/job_15.py
+    job_15:
+      python: ELP-DAB_DEPLOY/databricks_bundle/resources/job_15.py
