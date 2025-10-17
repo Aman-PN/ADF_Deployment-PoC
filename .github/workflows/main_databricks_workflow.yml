@@ -67,13 +67,15 @@ jobs:
         #  ref: ${{ vars.ADFBRANCH }}
         #  path: ${{ vars.ARM_FOLDER }}
 
-      - name: Set up Python & jq
+      - name: Set up jq
         run: |
-          python --version || true
-          sudo apt-get update -y
           sudo apt-get install -y jq
-          python -m pip install --upgrade pip
-          pip install databricks-bundles==0.248.0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
 
       - name: create replace parameters python script
         run: |
@@ -131,25 +133,6 @@ jobs:
             echo "ERROR: Databricks bundle folder '$DATABRICKS_BUNDLE_PATH' not found."
             exit 1
           fi
-
-      # ============================================
-      # ⚙️ Setup Python & jq (Optimized)
-      # ============================================
-      - name: Setup Python & jq (cached)
-        run: |
-          set -e
-          echo "🔍 Checking for jq..."
-          if ! command -v jq &> /dev/null; then
-            echo "⚙️ jq not found — installing once..."
-            sudo apt-get update -y -qq
-            sudo apt-get install -y -qq jq
-          else
-            echo "✅ jq already installed — skipping installation"
-          fi
-
-          echo "🐍 Setting up Python..."
-          python -m ensurepip --upgrade >/dev/null 2>&1 || true
-          python -m pip install --quiet --upgrade pip
 
       - name: create replace parameters python script
         run: |
@@ -209,8 +192,12 @@ jobs:
             exit 1
           fi
 
-      - name: Set up Databricks CLI
-        uses: databricks/setup-cli@v0.220.0
+      # - name: Set up Databricks CLI
+      #   uses: databricks/setup-cli@v0.220.0
+    
+      - name: Install Databricks CLI
+        run: |
+          pip install databricks-bundles==0.248.0
 
       - name: Azure Login (service principal)
         run: |
@@ -304,11 +291,20 @@ jobs:
               echo "Cluster $CLUSTER_NAME already exists (id: $cluster_id)"
           fi
 
-      # 6. Deploy Databricks Asset Bundle
-      - name: Deploy Databricks bundle
+
+      - name: Deploy with Asset Bundles
         working-directory: ./ELP-DAB_DEPLOY/databricks_bundle
+        env:
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
         run: |
           databricks bundle deploy --target "${{ inputs.environment }}"
+
+      # # 6. Deploy Databricks Asset Bundle
+      # - name: Deploy Databricks bundle
+      #   working-directory: ./ELP-DAB_DEPLOY/databricks_bundle
+      #   run: |
+      #     databricks bundle deploy --target "${{ inputs.environment }}"
 
       # 7. (Optional) Trigger the deployed job
       - name: Run deployed job
