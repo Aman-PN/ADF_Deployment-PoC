@@ -1,0 +1,32 @@
+# copy contents into resources/job_15.py
+# from databricks.bundles.jobs import Job
+
+
+# job_15 = Job.from_dict(
+#     {
+#         "name": "job_15",
+#         "tasks": [
+#             {
+#                 "task_key": "runt_the_notebook",
+#                 "notebook_task": {
+#                     "notebook_path": "/Workspace/ELP-DAB_DEPLOY/databricks_bundle/files/databricks_bundle/resources/notebooks/Notebook1.ipynb",
+#                     "source": "WORKSPACE",
+#                 },
+#                 "existing_cluster_id": "1017-154210-95uerbaw",
+#             },
+#         ],
+#         "queue": {
+#             "enabled": True,
+#         },
+#     }
+# )
+
+resources:
+  jobs:
+    job_15:
+      name: job_15
+      tasks:
+        - task_key: run_the_notebook
+          notebook_task:
+            notebook_path: resources/notebooks/Notebook1.ipynb
+          existing_cluster_id: 10217-154210-95urebw

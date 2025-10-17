@@ -283,12 +283,12 @@ jobs:
         run: |
           databricks bundle deploy --target "${{ inputs.environment }}"
 
-      # 7. (Optional) Trigger the deployed job
-      - name: Run deployed job
-        if: success()
-        working-directory: ./ELP-DAB_DEPLOY/databricks_bundle/resources/
-        run: |
-          databricks bundle run job15 --target "${{ inputs.environment }}"
+      # # 7. (Optional) Trigger the deployed job
+      # - name: Run deployed job
+      #   if: success()
+      #   working-directory: ./ELP-DAB_DEPLOY/databricks_bundle/resources/
+      #   run: |
+      #     databricks bundle run job15 --target "${{ inputs.environment }}"
                   
       # === Optional: Deploy Databricks Pipelines ===
       # - name: Deploy Databricks Pipelines
