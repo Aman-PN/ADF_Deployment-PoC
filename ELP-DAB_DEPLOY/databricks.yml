@@ -28,8 +28,6 @@ targets:
   #     host: https://adb-4056904538165901.1.azuredatabricks.net/
   #     root_path: /Workspace/ADF_Deployment-PoC/prod/ELP-DAB_DEPLOY/databricks_bundle
 
-
 resources:
   jobs:
-    job_15:
-      python: ELP-DAB_DEPLOY/databricks_bundle/resources/job_15.py
+    job15: jobs.job15
