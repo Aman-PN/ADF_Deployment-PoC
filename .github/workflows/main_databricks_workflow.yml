@@ -297,6 +297,7 @@ jobs:
         env:
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_BUNDLE_DISABLE_GIT_SOURCE_PATHS: "true"  # 👈 Add thi
         run: |
           databricks bundle deploy --target "${{ inputs.environment }}"
 
