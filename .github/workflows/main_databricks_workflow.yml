@@ -116,20 +116,9 @@ jobs:
               globals()[args[1]](*args[2:])
           EOT
 
-      - name: Prepare PARAMETERIZATION for Databricks (review)
+      - name: Prepare PARAMETERIZATION for Databricks
         run: |
-          # We'll reuse the same PARAMETERIZATION var you already have in GitHub
-          # You can extend it with Databricks-specific mapping lines. Example placeholders (commented):
-          # dev-dab-ws,stage-dab-ws
-          # dev-cluster,stage-cluster
-          # dev-job,stage-job
           echo "${{ vars.PARAMETERIZATION }}" > parameters.txt
-          echo "" >> parameters.txt
-          echo "# Add Databricks placeholders as needed (example):" >> parameters.txt
-          echo "# dev-dab-ws,stage-dab-ws" >> parameters.txt
-          echo "# dev-cluster,stage-cluster" >> parameters.txt
-          echo "# dev-job,stage-job" >> parameters.txt
-          echo "Contents of parameters.txt:"
           cat parameters.txt
 
       - name: Replace parameters inside bundle files
@@ -207,9 +196,6 @@ jobs:
         run: |
           echo "${{ vars.PARAMETERIZATION }}" > parameters.txt
           echo "" >> parameters.txt
-          echo "# Databricks cluster and job mapping" >> parameters.txt
-          echo "dev-databricks-cluster,stage-databricks-cluster" >> parameters.txt
-          echo "dev-databricks-cluster,prod-databricks-cluster" >> parameters.txt
           cat parameters.txt
 
       - name: Replace parameters inside bundle files
