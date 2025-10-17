@@ -192,12 +192,12 @@ jobs:
             exit 1
           fi
 
-      # - name: Set up Databricks CLI
-      #   uses: databricks/setup-cli@v0.220.0
+      - name: Set up Databricks CLI
+        uses: databricks/setup-cli@v0.248.0
     
-      - name: Install Databricks CLI
-        run: |
-          pip install databricks-bundles==0.248.0
+      # - name: Install Databricks CLI
+      #   run: |
+      #     pip install databricks-bundles==0.248.0
 
       - name: Azure Login (service principal)
         run: |
@@ -215,10 +215,10 @@ jobs:
           echo "azure_client_id = ${{ secrets.ARM_CLIENT_ID}}" >> ~/.databrickscfg
           echo "azure_client_secret = ${{ secrets.ARM_CLIENT_SECRET}}" >> ~/.databrickscfg
 
-      #   # Configure Databricks CLI
-      # - name: Configure Databricks CLI
-      #   run: |
-      #     databricks configure --host $DATABRICKS_HOST --token $DATABRICKS_TOKEN
+        # Configure Databricks CLI
+      - name: Configure Databricks CLI
+        run: |
+          databricks configure --host $DATABRICKS_HOST --token $DATABRICKS_TOKEN
     
       - name: Get current active job runs (stage/prod only)
         if: contains(inputs.environment, 'stage') || contains(inputs.environment, 'prod')
