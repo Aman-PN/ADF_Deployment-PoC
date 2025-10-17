@@ -215,10 +215,10 @@ jobs:
           echo "azure_client_id = ${{ secrets.ARM_CLIENT_ID}}" >> ~/.databrickscfg
           echo "azure_client_secret = ${{ secrets.ARM_CLIENT_SECRET}}" >> ~/.databrickscfg
 
-        # Configure Databricks CLI
-      - name: Configure Databricks CLI
-        run: |
-          databricks configure --host $DATABRICKS_HOST --token $DATABRICKS_TOKEN
+      #   # Configure Databricks CLI
+      # - name: Configure Databricks CLI
+      #   run: |
+      #     databricks configure --host $DATABRICKS_HOST --token $DATABRICKS_TOKEN
     
       - name: Get current active job runs (stage/prod only)
         if: contains(inputs.environment, 'stage') || contains(inputs.environment, 'prod')
