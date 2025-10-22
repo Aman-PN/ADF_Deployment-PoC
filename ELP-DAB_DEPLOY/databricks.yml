@@ -30,8 +30,7 @@ targets:
       root_path: /Workspace/ELP-DAB_DEPLOY/databricks_bundle
     default: true
 
-# resources:
-#   jobs:
-#     - job_15.yml
-#   notebooks:
-#     - resources/notebooks/*.ipynb
+
+resources:
+  jobs: ./job_15.yml
+  notebooks: resources/notebooks/*.ipynb
