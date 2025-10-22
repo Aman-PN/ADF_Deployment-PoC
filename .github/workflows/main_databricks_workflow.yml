@@ -252,21 +252,22 @@ jobs:
           echo "Checking existing clusters..."
           CLUSTER_NAME="dbx-${{ inputs.environment }}-cluster"
           cluster_id=$(databricks clusters list --output json | jq -r ".[] | select(.cluster_name==\"$CLUSTER_NAME\") | .cluster_id")
-          
+
           if [ -z "$cluster_id" ] || [ "$cluster_id" == "null" ]; then
             echo "Cluster $CLUSTER_NAME not found. Creating new cluster..."
-            databricks clusters create \
+            databricks clusters create "15.4.x-scala2.12" \
               --cluster-name "$CLUSTER_NAME" \
-              --spark-version "15.4.x-scala2.12" \
               --node-type-id "Standard_D4ds_v5" \
               --autotermination-minutes 10 \
               --single-user-name "aman.nandgaule@tcs.com" \
               --data-security-mode "LEGACY_SINGLE_USER_STANDARD" \
               --runtime-engine "PHOTON" \
+              --kind "CLASSIC_PREVIEW" \
               --is-single-node
           else
             echo "Cluster $CLUSTER_NAME already exists (id: $cluster_id)"
           fi
+
 
       - name: Deploy with Asset Bundles
         working-directory: ./ELP-DAB_DEPLOY/databricks_bundle
