@@ -8,7 +8,7 @@ resources:
       tasks:
         - task_key: run_the-notebook
           notebook_task:
-            notebook_path: /Workspace/ELP-DAB_DEPLOY/databricks_bundle/files/databricks_bundle/resources/notebooks/Notebook1.ipynb
+            notebook_path: /Workspace/ELP-DAB_DEPLOY/databricks_bundle/files/databricks_bundle/resources/notebooks/Notebook1
             #notebook_path: /Workspace/Users/aman.nandgaule@tcs.com/Notebooks/Notebook1.ipynb
             #notebook_path: ../../resources/notebooks/Notebook1.ipynb
             source: WORKSPACE
