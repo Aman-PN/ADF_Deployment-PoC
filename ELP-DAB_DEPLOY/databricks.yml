@@ -32,5 +32,4 @@ targets:
 
 
 resources:
-  jobs: ./job_15.yml
-  notebooks: resources/notebooks/*.ipynb
+  jobs: /Workspace/ELP-DAB_DEPLOY/databricks_bundle/resources/job_15.yml
