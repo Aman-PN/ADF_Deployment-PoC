@@ -21,12 +21,26 @@
 #     }
 # )
 
+# resources:
+#   jobs:
+#     job_15:
+#       name: job_15
+#       tasks:
+#         - task_key: run_the_notebook
+#           notebook_task:
+#             notebook_path: resources/notebooks/Notebook1.ipynb
+#           existing_cluster_id: 1021-085414-exwdrr8t
+
+
 resources:
   jobs:
-    job_15:
-      name: job_15
+    Job_16:
+      name: Job_16
       tasks:
-        - task_key: run_the_notebook
+        - task_key: run_the-notebook
           notebook_task:
-            notebook_path: resources/notebooks/Notebook1.ipynb
-          existing_cluster_id: 1021-085414-exwdrr8t
+            notebook_path: /Workspace/ELP-DAB_DEPLOY/databricks_bundle/files/databricks_bundle/resources/notebooks/Notebook1.ipynb
+            source: WORKSPACE
+          existing_cluster_id: 1022-075208-toq8mxqg
+      queue:
+        enabled: true
