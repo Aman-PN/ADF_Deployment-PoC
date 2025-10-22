@@ -251,27 +251,21 @@ jobs:
           set -e
           echo "Checking existing clusters..."
           CLUSTER_NAME="dbx-${{ inputs.environment }}-cluster"
-          databricks clusters list --output JSON > clusters.json || true
-          cluster_id=$(jq -r ".[] | select(.cluster_name==\"$CLUSTER_NAME\") | .cluster_id" clusters.json)
-          if [ -z "$cluster_id" ] || [ "$cluster_id" == "null" ]; then
-              echo "Cluster $CLUSTER_NAME not found. Creating new cluster..."
-          cat <<EOT > cluster_config.json
-          {
-            "cluster_name": "$CLUSTER_NAME",
-            "spark_version": "15.4.x-scala2.12",
-            "node_type_id": "Standard_D4ds_v5",
-            "autotermination_minutes": 10,
-            "single_user_name": "aman.nandgaule@tcs.com",
-            "data_security_mode": "LEGACY_SINGLE_USER_STANDARD",
-            "runtime_engine": "PHOTON",
-            "kind": "CLASSIC_PREVIEW",
-            "is_single_node": true
-          }
-          EOT
+          cluster_id=$(databricks clusters list --output json | jq -r ".[] | select(.cluster_name==\"$CLUSTER_NAME\") | .cluster_id")
           
-              databricks clusters create --json-file cluster_config.json
+          if [ -z "$cluster_id" ] || [ "$cluster_id" == "null" ]; then
+            echo "Cluster $CLUSTER_NAME not found. Creating new cluster..."
+            databricks clusters create \
+              --cluster-name "$CLUSTER_NAME" \
+              --spark-version "15.4.x-scala2.12" \
+              --node-type-id "Standard_D4ds_v5" \
+              --autotermination-minutes 10 \
+              --single-user-name "aman.nandgaule@tcs.com" \
+              --data-security-mode "LEGACY_SINGLE_USER_STANDARD" \
+              --runtime-engine "PHOTON" \
+              --is-single-node
           else
-              echo "Cluster $CLUSTER_NAME already exists (id: $cluster_id)"
+            echo "Cluster $CLUSTER_NAME already exists (id: $cluster_id)"
           fi
 
 
