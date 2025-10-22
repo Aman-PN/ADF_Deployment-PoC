@@ -5,6 +5,14 @@ resources:
   jobs:
     Job_16:
       name: Job_16
+      tasks:
+        - task_key: run_the-notebook
+          notebook_task:
+            notebook_path: /Workspace/ELP-DAB_DEPLOY/databricks_bundle/files/databricks_bundle/resources/notebooks/Notebook1.ipynb
+            source: WORKSPACE
+          existing_cluster_id: 1022-075208-toq8mxqg
+      queue:
+        enabled: true
 
 workspace:
   host: https://adb-1002771033780244.4.azuredatabricks.net/
