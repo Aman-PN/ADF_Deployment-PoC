@@ -10,8 +10,8 @@ resources:
             notebook_path: /Workspace/ELP-DAB_DEPLOY/databricks_bundle/files/databricks_bundle/resources/notebooks/Notebook1
             source: WORKSPACE
           existing_cluster_id: 1022-075208-toq8mxqg
-      # queue:
-      #   enabled: true
+      queue:
+        enabled: true
 
 workspace:
   host: https://adb-1002771033780244.4.azuredatabricks.net/
