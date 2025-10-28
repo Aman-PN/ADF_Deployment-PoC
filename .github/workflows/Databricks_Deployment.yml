@@ -1,0 +1,45 @@
+# This workflow file is used to deploy Databricks resources based on branch pushes or manual triggers.
+name: Databricks_Deployment(Full)
+
+on:
+  # push:
+  #   branches:
+  #     - develop
+  #     - stage
+      
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment for Databricks deployment'
+        type: choice
+        options:
+          - 'dev'
+          - 'stage'
+          - 'prod'
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  Deploying_To_Dev:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    uses: Aman-PN/ADF_Deployment-POC/.github/workflows/main_databricks_workflow.yml@develop
+    with:
+      environment: dev
+    secrets: inherit
+    
+  Deploying_To_Stage:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/stage'
+    uses: Aman-PN/ADF_Deployment-POC/.github/workflows/main_databricks_workflow.yml@develop
+    with:
+      environment: stage
+    secrets: inherit
+
+  Selective_Databricks_Deployment:
+    if: github.event_name == 'workflow_dispatch'
+    uses: Aman-PN/ADF_Deployment-POC/.github/workflows/main_databricks_workflow.yml@develop
+    with:
+      environment: ${{ inputs.environment }}
+    secrets: inherit
