@@ -1,4 +1,4 @@
-# this is the main workflow for deploying Databricks resources using GitHub Actions
+# this is the main workflow for deploying Databricks resources using GitHub Actions.
 name: Main_DAB_full_deployment
 
 on:

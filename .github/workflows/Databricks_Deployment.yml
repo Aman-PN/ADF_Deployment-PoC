@@ -1,4 +1,4 @@
-# This workflow file is used to deploy Databricks resources based on branch pushes or manual triggers.
+# This workflow file is used to deploy Databricks resources based on branch pushes or manual triggers. 
 name: Databricks_Deployment(Full)
 
 on:
