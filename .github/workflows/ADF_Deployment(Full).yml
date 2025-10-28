@@ -1,4 +1,4 @@
-# workflow for full deployment of ADF from github to different environments
+# Github Workflow for ADF Full Deployment.
 name: ADF_Deployment(Full)
 
 on:
