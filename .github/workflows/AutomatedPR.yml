@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GITHUB_TOKEN: ${{ vars.GITHUB_TOKEN }}
-      GITHUB_USER: ${{ vars.GITHUB_USER }}
+      GITHUB_TOKEN: ${{ secrets.TOKEN_GITHUB }}
+      GITHUB_USER: ${{ vars.USER_GITHUB }}
       REPO_NAME: ${{ vars.REPO_NAME }}
       TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
 
