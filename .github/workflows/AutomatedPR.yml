@@ -1,4 +1,4 @@
-name: Create or Update Promotion Pull Request
+name: Automated_PR_workflow
 
 on:
   workflow_dispatch:
