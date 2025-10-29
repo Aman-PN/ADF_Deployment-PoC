@@ -5,8 +5,11 @@ on:
     inputs:
       target_branch:
         description: "Target branch for promotion (stage or release)"
+        type: choice
+        options:
+          - 'stage'
+          - 'release'
         required: true
-        default: "stage"
 
 permissions:
   contents: write
