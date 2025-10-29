@@ -98,7 +98,6 @@ jobs:
           PR_BODY="Automated promotion: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
 
           echo "🔍 Checking for existing open PR between ${SOURCE_BRANCH} and ${TARGET_BRANCH}..."
-#         EXISTING_PR_URL="https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls?state=open&base=${TARGET_BRANCH}&head=${USER_GITHUB}:${SOURCE_BRANCH}"
           EXISTING_PR_URL="https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls?state=open&base=${TARGET_BRANCH}"
           
           EXISTING_PR=$(curl -s -H "Authorization: token $TOKEN_GITHUB" -H "Accept: application/vnd.github+json" "$EXISTING_PR_URL" | jq -r '.[0].html_url')
