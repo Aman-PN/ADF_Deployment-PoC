@@ -1,17 +1,11 @@
 name: Automated_PR_workflow_new_Resume_conflict_resolve
 
 on:
-  push:
-    branches:
-      - develop
-      - stage
-    target_branch:
-        description: "Target branch for promotion (stage or release)"
-        type: choice
-        options:
-          - 'stage'
-          - 'release'
-        default: 'stage'
+  # push:
+  #   branches:
+  #     - develop
+  #     - stage
+  
   workflow_dispatch:
     inputs:
       target_branch:
