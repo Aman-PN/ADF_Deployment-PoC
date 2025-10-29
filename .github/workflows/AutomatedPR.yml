@@ -1,4 +1,4 @@
-name: 🚀 Automated PR Workflow
+name: Automated_PR_workflow
 
 on:
   workflow_dispatch:
@@ -14,10 +14,11 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 jobs:
   create-or-update-pr:
-    name: Promote Branch and Manage PR
+    name: 🚀 Promote Branch and Manage PR
     runs-on: ubuntu-latest
 
     env:
@@ -27,141 +28,139 @@ jobs:
       TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
 
     steps:
+      # Step 1 - Checkout code
       - name: 🧩 Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # Step 2 - Configure Git
       - name: ⚙️ Configure Git identity
         run: |
-          git config --global user.email "${{ vars.USER_GITHUB }}@users.noreply.github.com"
-          git config --global user.name "${{ vars.USER_GITHUB }}"
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions Bot"
 
-      - name: 🐧 Setup environment
+      # Step 3 - Setup environment
+      - name: 🐧 Install dependencies
         run: |
           sudo apt-get update -y
           sudo apt-get install -y jq curl git
 
-      - name: 🪄 Run Promotion Script
+      # Step 4 - Determine source and feature branches
+      - name: 🔁 Determine branches
+        id: vars
         run: |
-          set -e
-
-          echo "============================================"
-          echo "🚀 Starting promotion process"
-          echo "Target Branch: $TARGET_BRANCH"
-          echo "============================================"
-
-          # ===== Validate Inputs =====
-          if [ -z "$TARGET_BRANCH" ]; then
-            echo "❌ TARGET_BRANCH not provided."
-            exit 1
-          fi
-
-          if [ -z "$TOKEN_GITHUB" ] || [ -z "$USER_GITHUB" ] || [ -z "$REPO_NAME" ]; then
-            echo "❌ Missing environment variables (TOKEN_GITHUB, USER_GITHUB, REPO_NAME)."
-            exit 1
-          fi
-
-          # ===== Determine Source Branch =====
-          if [ "$TARGET_BRANCH" == "stage" ]; then
-            SOURCE_BRANCH="develop"
-          elif [ "$TARGET_BRANCH" == "release" ]; then
-            SOURCE_BRANCH="stage"
+          if [ "${{ env.TARGET_BRANCH }}" == "stage" ]; then
+            echo "SOURCE_BRANCH=develop" >> $GITHUB_ENV
+          elif [ "${{ env.TARGET_BRANCH }}" == "release" ]; then
+            echo "SOURCE_BRANCH=stage" >> $GITHUB_ENV
           else
-            echo "❌ Invalid target branch. Use stage OR release."
+            echo "❌ Invalid target branch. Use 'stage' or 'release'."
             exit 1
           fi
 
-          # ===== Date & Feature Branch =====
-          TODAY="$(TZ='Asia/Kolkata' date +'%d_%m_%y_%H_%M')"
-          FEATURE_BRANCH="feature/${TARGET_BRANCH}-${TODAY}"
+          TODAY=$(TZ='Asia/Kolkata' date +'%d_%m_%y_%H_%M')
+          FEATURE_BRANCH="feature/${{ env.TARGET_BRANCH }}-${TODAY}"
+          echo "FEATURE_BRANCH=$FEATURE_BRANCH" >> $GITHUB_ENV
 
-          echo "🔄 Fetching branches..."
+      # Step 5 - Create feature branch
+      - name: 🌿 Create feature branch
+        run: |
           git fetch origin
+          git switch "${{ env.TARGET_BRANCH }}"
+          git pull origin "${{ env.TARGET_BRANCH }}"
+          git checkout -b "${{ env.FEATURE_BRANCH }}"
 
-          echo "🔄 Switching to target branch: $TARGET_BRANCH"
-          git switch "$TARGET_BRANCH"
-          git pull origin "$TARGET_BRANCH"
-
-          echo "🔄 Creating feature branch from $TARGET_BRANCH"
-          git checkout -b "$FEATURE_BRANCH"
-
-          echo "🔄 Merging $SOURCE_BRANCH → $FEATURE_BRANCH"
+      # Step 6 - Try merge and handle conflicts
+      - name: 🔄 Merge source → feature branch
+        id: merge
+        run: |
           set +e
           git merge origin/${SOURCE_BRANCH} --no-commit --no-ff
           MERGE_STATUS=$?
+          if [ $MERGE_STATUS -ne 0 ]; then
+            echo "conflict=true" >> $GITHUB_OUTPUT
+          else
+            echo "conflict=false" >> $GITHUB_OUTPUT
+            git commit -m "Merged ${SOURCE_BRANCH} into ${FEATURE_BRANCH}"
+            git push origin "${FEATURE_BRANCH}"
+          fi
           set -e
 
-          if [ $MERGE_STATUS -ne 0 ]; then
-            echo "❌ Merge conflict detected between ${SOURCE_BRANCH} and ${TARGET_BRANCH}."
+      # Step 7 - Handle conflicts
+      - name: ⚠️ Handle merge conflict
+        if: steps.merge.outputs.conflict == 'true'
+        run: |
+          echo "❌ Merge conflict detected! Creating PR for manual resolution..."
+          
+          PR_TITLE="Resolve Conflicts: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
+          PR_BODY="⚠️ Merge conflicts detected while promoting **${SOURCE_BRANCH} → ${TARGET_BRANCH}**.  
+          Please resolve manually in **${FEATURE_BRANCH}** and push the changes.  
+          Once resolved, re-run this workflow to continue automation."
 
-            # ===== Create PR to handle conflict manually =====
-            PR_TITLE="Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH}"
-            PR_BODY="⚠️ Merge conflict detected between ${SOURCE_BRANCH} and ${TARGET_BRANCH}. Please resolve manually."
-
-            PR_URL=$(curl -s -X POST \
-                -H "Authorization: token ${TOKEN_GITHUB}" \
-                -H "Accept: application/vnd.github+json" \
-                https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls \
-                -d "{\"title\":\"$PR_TITLE\",\"head\":\"$FEATURE_BRANCH\",\"base\":\"$TARGET_BRANCH\",\"body\":\"$PR_BODY\"}" \
-                | jq -r '.html_url')
-
-            if [ "$PR_URL" == "null" ] || [ -z "$PR_URL" ]; then
-              echo "❌ Failed to create PR during conflict handling."
-              exit 1
-            fi
-
-            PR_NUMBER=$(echo "$PR_URL" | awk -F'/' '{print $NF}')
-            COMMENT="⚠️ Merge conflict detected between **${SOURCE_BRANCH}** and **${TARGET_BRANCH}**.
-            PR: ${PR_URL}"
-
-            curl -s -X POST \
+          PR_URL=$(curl -s -X POST \
               -H "Authorization: token ${TOKEN_GITHUB}" \
               -H "Accept: application/vnd.github+json" \
-              https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/issues/${PR_NUMBER}/comments \
-              -d "{\"body\":\"${COMMENT}\"}"
+              https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls \
+              -d "{\"title\":\"$PR_TITLE\",\"head\":\"${FEATURE_BRANCH}\",\"base\":\"${TARGET_BRANCH}\",\"body\":\"$PR_BODY\"}" \
+              | jq -r '.html_url')
 
-            echo "🛑 Workflow stopped due to conflicts. Resolve and push fixes to continue."
-            exit 0
-          else
-            echo "✅ Merge successful! Committing changes..."
-            git commit -m "Merged ${SOURCE_BRANCH} into ${FEATURE_BRANCH}"
-            git push origin "$FEATURE_BRANCH"
+          if [ "$PR_URL" == "null" ] || [ -z "$PR_URL" ]; then
+            echo "❌ Failed to create conflict PR. Check permissions."
+            exit 1
           fi
 
-          # ===== Prepare PR details =====
+          echo "🛑 Workflow paused — manual action required."
+          echo "👉 Please resolve merge conflicts and push fixes to continue."
+          echo "🔗 PR: $PR_URL"
+
+          # Optional: Add a PR label for visibility
+          PR_NUMBER=$(echo "$PR_URL" | awk -F'/' '{print $NF}')
+          curl -s -X POST \
+            -H "Authorization: token ${TOKEN_GITHUB}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/issues/${PR_NUMBER}/labels \
+            -d '{"labels": ["needs-conflict-resolution"]}'
+
+          exit 0  # stops further steps until manually resolved
+
+      # Step 8 - Create or update PR if no conflicts
+      - name: 🪄 Create or Update Pull Request
+        if: steps.merge.outputs.conflict == 'false'
+        run: |
           PR_TITLE="Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH}"
           PR_BODY="Automated promotion: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
 
           echo "🔍 Checking for existing open PR..."
-          EXISTING_PR_URL="https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls?state=open&base=${TARGET_BRANCH}&head=${USER_GITHUB}:${FEATURE_BRANCH}"
+          EXISTING_PR_URL="https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls?state=open&base=${TARGET_BRANCH}&head=${USER_GITHUB}:${SOURCE_BRANCH}"
+          
           EXISTING_PR=$(curl -s -H "Authorization: token ${TOKEN_GITHUB}" -H "Accept: application/vnd.github+json" "$EXISTING_PR_URL" | jq -r '.[0].html_url')
 
           if [ "$EXISTING_PR" != "null" ] && [ -n "$EXISTING_PR" ]; then
-            echo "🔁 Existing PR found → $EXISTING_PR"
+            echo "🔁 PR already exists → $EXISTING_PR"
             PR_NUMBER=$(echo "$EXISTING_PR" | awk -F'/' '{print $NF}')
             curl -s -X PATCH \
               -H "Authorization: token ${TOKEN_GITHUB}" \
               -H "Accept: application/vnd.github+json" \
               https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls/${PR_NUMBER} \
               -d "{\"title\":\"$PR_TITLE\",\"body\":\"$PR_BODY\"}" > /dev/null
-            echo "✅ Existing PR updated successfully."
+            echo "✅ PR updated successfully!"
           else
             echo "🪄 Creating new Pull Request..."
             PR_URL=$(curl -s -X POST \
                 -H "Authorization: token ${TOKEN_GITHUB}" \
                 -H "Accept: application/vnd.github+json" \
                 https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls \
-                -d "{\"title\":\"$PR_TITLE\",\"head\":\"$FEATURE_BRANCH\",\"base\":\"$TARGET_BRANCH\",\"body\":\"$PR_BODY\"}" \
+                -d "{\"title\":\"$PR_TITLE\",\"head\":\"${FEATURE_BRANCH}\",\"base\":\"${TARGET_BRANCH}\",\"body\":\"$PR_BODY\"}" \
                 | jq -r '.html_url')
 
             if [ "$PR_URL" == "null" ] || [ -z "$PR_URL" ]; then
-              echo "❌ Failed to create Pull Request."
+              echo "❌ Failed to create Pull Request. Check permissions."
               exit 1
-            else
-              echo "✅ New PR created successfully!"
-              echo "🔗 $PR_URL"
             fi
+            echo "✅ PR created successfully: $PR_URL"
           fi
 
-          echo "🎉 Promotion process completed successfully!"
+      - name: 🎉 Final message
+        if: steps.merge.outputs.conflict == 'false'
+        run: echo "✅ Promotion process completed successfully!"
