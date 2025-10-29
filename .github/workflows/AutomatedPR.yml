@@ -1,6 +1,17 @@
 name: Automated_PR_workflow_new_Resume_conflict_resolve
 
 on:
+  push:
+    branches:
+      - develop
+      - stage
+    target_branch:
+        description: "Target branch for promotion (stage or release)"
+        type: choice
+        options:
+          - 'stage'
+          - 'release'
+        default: 'stage'
   workflow_dispatch:
     inputs:
       target_branch:
@@ -79,7 +90,7 @@ jobs:
             git push origin "${FEATURE_BRANCH}"
           fi
           set -e
-          
+
       - name: Debug GITHUB_TOKEN identity
         run: |
           echo "Actor: $GITHUB_ACTOR"
