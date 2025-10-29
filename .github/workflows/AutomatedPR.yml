@@ -68,7 +68,7 @@ jobs:
           fi
 
           # ===== Date & Feature Branch =====
-          TODAY=$(date +"%d_%m_%y_%H_%M")
+          TODAY="$(TZ='Asia/Kolkata' date +'%d_%m_%y_%H_%M')"
           FEATURE_BRANCH="feature/${TARGET_BRANCH}-${TODAY}"
 
           echo "🔄 Fetching branches..."
