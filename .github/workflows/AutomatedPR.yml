@@ -79,6 +79,11 @@ jobs:
             git push origin "${FEATURE_BRANCH}"
           fi
           set -e
+          
+      - name: Debug GITHUB_TOKEN identity
+        run: |
+          echo "Actor: $GITHUB_ACTOR"
+          curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/user | jq .
 
       - name: ⚠️ Handle merge conflict
         if: steps.merge.outputs.conflict == 'true'
@@ -93,7 +98,7 @@ jobs:
           PR_RESPONSE=$(curl -s -X POST \
               -H "Authorization: Bearer $GITHUB_TOKEN" \
               -H "Accept: application/vnd.github+json" \
-              https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls \
+              https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls \
               -d "{\"title\":\"$PR_TITLE\",\"head\":\"$FEATURE_BRANCH\",\"base\":\"$TARGET_BRANCH\",\"body\":\"$PR_BODY\"}")
 
           PR_URL=$(echo "$PR_RESPONSE" | jq -r '.html_url')
