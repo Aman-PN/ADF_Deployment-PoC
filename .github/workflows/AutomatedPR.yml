@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      TOKEN_GITHUB: ${{ secrets.TOKEN_GITHUB }}
+      TOKEN_GITHUB: ${{ secrets.GITHUB_TOKEN }}
       USER_GITHUB: ${{ vars.USER_GITHUB }}
       REPO_NAME: ${{ vars.REPO_NAME }}
       TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
