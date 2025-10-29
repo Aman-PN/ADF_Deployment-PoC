@@ -1,0 +1,138 @@
+name: Automated_PR_workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Target branch for promotion (stage or release)"
+        type: choice
+        options:
+          - 'stage'
+          - 'release'
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-or-update-pr:
+    name: Promote Branch and Manage PR
+    runs-on: ubuntu-latest
+
+    env:
+      TOKEN_GITHUB: ${{ secrets.TOKEN_GITHUB }}
+      USER_GITHUB: ${{ vars.USER_GITHUB }}
+      REPO_NAME: ${{ vars.REPO_NAME }}
+      TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
+
+    steps:
+      - name: 🧩 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: ⚙️ Configure Git identity
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions Bot"
+      - name: 🐧 Setup environment
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq curl git
+
+      - name: 🪄 Run Promotion Script
+        run: |
+          set -e
+
+          echo "============================================"
+          echo "🚀 Starting promotion process"
+          echo "Target Branch: $TARGET_BRANCH"
+          echo "============================================"
+
+          # ===== Validate Inputs =====
+          if [ -z "$TARGET_BRANCH" ]; then
+            echo "❌ TARGET_BRANCH not provided."
+            exit 1
+          fi
+
+          if [ -z "$TOKEN_GITHUB" ] || [ -z "$USER_GITHUB" ] || [ -z "$REPO_NAME" ]; then
+            echo "❌ Missing environment variables (TOKEN_GITHUB, USER_GITHUB, REPO_NAME)."
+            exit 1
+          fi
+
+          # ===== Determine Source Branch =====
+          if [ "$TARGET_BRANCH" == "stage" ]; then
+            SOURCE_BRANCH="develop"
+          elif [ "$TARGET_BRANCH" == "release" ]; then
+            SOURCE_BRANCH="stage"
+          else
+            echo "❌ Invalid target branch. Use stage OR release."
+            exit 1
+          fi
+
+          # ===== Date & Feature Branch =====
+          TODAY="$(TZ='Asia/Kolkata' date +'%d_%m_%y_%H_%M')"
+          FEATURE_BRANCH="feature/${TARGET_BRANCH}-${TODAY}"
+
+          echo "🔄 Fetching branches..."
+          git fetch origin
+
+          echo "🔄 Switching to target branch: $TARGET_BRANCH"
+          git switch "$TARGET_BRANCH"
+          git pull origin "$TARGET_BRANCH"
+
+          echo "🔄 Creating feature branch from $TARGET_BRANCH"
+          git checkout -b "$FEATURE_BRANCH"
+
+          echo "🔄 Merging $SOURCE_BRANCH → $FEATURE_BRANCH"
+          git merge origin/"$SOURCE_BRANCH" --no-edit || {
+            echo "❌ Merge conflict detected. Resolve manually."
+            exit 1
+          }
+
+          echo "⬆️ Pushing feature branch to remote..."
+          git push origin "$FEATURE_BRANCH"
+
+          # ===== Prepare PR details =====
+          PR_TITLE="Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH}"
+          PR_BODY="Automated promotion: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
+
+          echo "🔍 Checking for existing open PR between ${SOURCE_BRANCH} and ${TARGET_BRANCH}..."
+          EXISTING_PR_URL="https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls?state=open&base=${TARGET_BRANCH}&head=${USER_GITHUB}:${SOURCE_BRANCH}"
+
+          EXISTING_PR=$(curl -s -H "Authorization: token $TOKEN_GITHUB" -H "Accept: application/vnd.github+json" "$EXISTING_PR_URL" | jq -r '.[0].html_url')
+
+          if [ "$EXISTING_PR" != "null" ] && [ -n "$EXISTING_PR" ]; then
+            echo "🔁 PR already exists → $EXISTING_PR"
+            echo "🔄 Updating PR title and body..."
+
+            PR_NUMBER=$(echo "$EXISTING_PR" | awk -F'/' '{print $NF}')
+
+            curl -s -X PATCH \
+              -H "Authorization: token $TOKEN_GITHUB" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls/${PR_NUMBER} \
+              -d "{\"title\":\"$PR_TITLE\",\"body\":\"$PR_BODY\"}" > /dev/null
+
+            echo "✅ Existing PR updated successfully!"
+            echo "🔗 $EXISTING_PR"
+
+          else
+            echo "🪄 Creating new Pull Request..."
+            PR_URL=$(curl -s -X POST \
+                -H "Authorization: token $TOKEN_GITHUB" \
+                -H "Accept: application/vnd.github+json" \
+                https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls \
+                -d "{\"title\":\"$PR_TITLE\",\"head\":\"$FEATURE_BRANCH\",\"base\":\"$TARGET_BRANCH\",\"body\":\"$PR_BODY\"}" \
+                | jq -r '.html_url')
+
+            if [ "$PR_URL" == "null" ] || [ -z "$PR_URL" ]; then
+              echo "❌ Failed to create Pull Request. Check token or permissions."
+              exit 1
+            else
+              echo "✅ New Pull Request created successfully!"
+              echo "🔗 $PR_URL"
+            fi
+          fi
+
+          echo "🎉 Promotion process completed successfully!"
