@@ -22,7 +22,6 @@ jobs:
 
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #GITHUB_USER: ${{ github.repository_owner }}
       GITHUB_USER: ${{ github.actor }}
       REPO_NAME: ${{ github.event.repository.name }}
       TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
@@ -84,6 +83,13 @@ jobs:
         run: |
           git push origin "${FEATURE_BRANCH}" --force
 
+      - name: 🧰 Install and Authenticate GitHub CLI
+        run: |
+          echo "🧩 Installing GitHub CLI..."
+          sudo apt-get install -y gh
+          echo "${GITHUB_TOKEN}" | gh auth login --with-token
+          gh auth status
+
       - name: 🪄 Create or Update Pull Request
         run: |
           PR_TITLE="Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH}"
@@ -92,7 +98,7 @@ jobs:
           echo "🔍 Checking for existing open PR..."
           EXISTING_PR_URL="https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/pulls?state=open&base=${TARGET_BRANCH}&head=${GITHUB_USER}:${SOURCE_BRANCH}"
           
-          EXISTING_PR=$(curl -s -H "Authorization: token $TOKEN_GITHUB" \
+          EXISTING_PR=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
                               -H "Accept: application/vnd.github+json" \
                               "$EXISTING_PR_URL" | jq -r '.[0].html_url')
 
