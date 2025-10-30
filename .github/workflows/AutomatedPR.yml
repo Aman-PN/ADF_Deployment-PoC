@@ -1,4 +1,4 @@
-name: Automated_PR_workflow_new_Resume_conflict_resolve
+name: Automated PR Workflow
 
 on:
   workflow_dispatch:
@@ -14,92 +14,100 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  issues: write
 
 jobs:
-  promote:
+  promote-and-manage-pr:
     name: 🚀 Promote Branch and Manage PR
     runs-on: ubuntu-latest
 
     env:
-      GITHUB_TOKEN: ${{ secrets.TOKEN_GITHUB }}
-      USER_GITHUB: ${{ vars.USER_GITHUB }}
-      REPO_NAME: ${{ vars.REPO_NAME }}
+      TOKEN_GITHUB: ${{ secrets.GITHUB_TOKEN }}
+      USER_GITHUB: ${{ github.repository_owner }}
+      REPO_NAME: ${{ github.event.repository.name }}
       TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
 
     steps:
-      - name: 🧩 Checkout repository
+      - name: 🧩 Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: ⚙️ Configure Git identity
+      - name: ⚙️ Configure Git Identity
         run: |
-          git config --global user.email "github-actions@github.com"
-          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
 
-      - name: 🐧 Install jq
+      - name: 🐧 Setup Dependencies
         run: |
-          sudo apt-get update -y && sudo apt-get install -y jq
+          sudo apt-get update -y
+          sudo apt-get install -y jq curl git
 
-      - name: 🔁 Determine branches
+      - name: 🔍 Determine Source and Feature Branch
         id: vars
         run: |
-          if [ "${{ env.TARGET_BRANCH }}" == "stage" ]; then
+          if [ "${TARGET_BRANCH}" == "stage" ]; then
             echo "SOURCE_BRANCH=develop" >> $GITHUB_ENV
-          elif [ "${{ env.TARGET_BRANCH }}" == "release" ]; then
+          elif [ "${TARGET_BRANCH}" == "release" ]; then
             echo "SOURCE_BRANCH=stage" >> $GITHUB_ENV
           else
-            echo "❌ Invalid target branch."
-            exit 1
+            echo "❌ Invalid target branch"; exit 1
           fi
 
           TODAY=$(TZ='Asia/Kolkata' date +'%d_%m_%y_%H_%M')
-          FEATURE_BRANCH="feature/${{ env.TARGET_BRANCH }}-${TODAY}"
+          FEATURE_BRANCH="feature/${TARGET_BRANCH}-${TODAY}"
           echo "FEATURE_BRANCH=$FEATURE_BRANCH" >> $GITHUB_ENV
 
-      - name: 🌿 Create feature branch
+      - name: 🔄 Prepare Branches
         run: |
           git fetch origin
-          git switch "${{ env.TARGET_BRANCH }}"
-          git pull origin "${{ env.TARGET_BRANCH }}"
-          git checkout -b "${{ env.FEATURE_BRANCH }}"
+          git switch "${TARGET_BRANCH}"
+          git pull origin "${TARGET_BRANCH}"
+          git checkout -b "${FEATURE_BRANCH}"
 
-      - name: 🔄 Merge source → feature branch
-        id: merge
+      - name: 🔀 Merge Source into Feature Branch
         run: |
-          set +e
-          git merge origin/${SOURCE_BRANCH} --no-commit --no-ff
-          MERGE_STATUS=$?
-          if [ $MERGE_STATUS -ne 0 ]; then
-            echo "conflict=true" >> $GITHUB_OUTPUT
-          else
-            echo "conflict=false" >> $GITHUB_OUTPUT
-            git commit -m "Merged ${SOURCE_BRANCH} into ${FEATURE_BRANCH}"
-            git push origin "${FEATURE_BRANCH}"
-          fi
           set -e
+          git merge origin/"${SOURCE_BRANCH}" --no-edit || {
+            echo "❌ Merge conflict detected! Resolve manually."
+            exit 1
+          }
 
-      - name: Debug GITHUB_TOKEN identity
+      - name: 📤 Push Feature Branch
         run: |
-          echo "Actor: $GITHUB_ACTOR"
-          curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/user | jq .
+          git push origin "${FEATURE_BRANCH}"
 
-      - name: 🪄 Create or Update PR (no conflicts)
-        if: steps.merge.outputs.conflict == 'false'
+      - name: 🪄 Create or Update Pull Request
         run: |
           PR_TITLE="Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH}"
           PR_BODY="Automated promotion: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
 
-          PR_URL=$(curl -s -X POST \
-              -H "Authorization: Bearer $GITHUB_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls \
-              -d "{\"title\":\"$PR_TITLE\",\"head\":\"${FEATURE_BRANCH}\",\"base\":\"${TARGET_BRANCH}\",\"body\":\"$PR_BODY\"}" \
-              | jq -r '.html_url')
+          echo "🔍 Checking for existing open PR..."
+          EXISTING_PR_URL="https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls?state=open&base=${TARGET_BRANCH}&head=${USER_GITHUB}:${SOURCE_BRANCH}"
+          
+          EXISTING_PR=$(curl -s -H "Authorization: token $TOKEN_GITHUB" \
+                              -H "Accept: application/vnd.github+json" \
+                              "$EXISTING_PR_URL" | jq -r '.[0].html_url')
 
-          echo "✅ PR created successfully: $PR_URL"
+          if [ "$EXISTING_PR" != "null" ] && [ -n "$EXISTING_PR" ]; then
+            echo "🔁 PR already exists → $EXISTING_PR"
+            echo "✅ Skipping new PR creation."
+          else
+            echo "🪄 Creating new Pull Request..."
+            PR_URL=$(curl -s -X POST \
+                -H "Authorization: token $TOKEN_GITHUB" \
+                -H "Accept: application/vnd.github+json" \
+                https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls \
+                -d "{\"title\":\"$PR_TITLE\",\"head\":\"$FEATURE_BRANCH\",\"base\":\"$TARGET_BRANCH\",\"body\":\"$PR_BODY\"}" \
+                | jq -r '.html_url')
 
-      - name: 🎉 Success message
-        if: steps.merge.outputs.conflict == 'false'
+            if [ "$PR_URL" == "null" ] || [ -z "$PR_URL" ]; then
+              echo "❌ Failed to create Pull Request."
+              exit 1
+            else
+              echo "✅ New Pull Request created successfully!"
+              echo "🔗 $PR_URL"
+            fi
+          fi
+
+      - name: 🎉 Done
         run: echo "✅ Promotion process completed successfully!"
