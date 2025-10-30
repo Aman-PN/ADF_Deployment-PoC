@@ -1,11 +1,6 @@
 name: Automated_PR_workflow_new_Resume_conflict_resolve
 
 on:
-  # push:
-  #   branches:
-  #     - develop
-  #     - stage
-  
   workflow_dispatch:
     inputs:
       target_branch:
@@ -89,42 +84,6 @@ jobs:
         run: |
           echo "Actor: $GITHUB_ACTOR"
           curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/user | jq .
-
-      - name: ⚠️ Handle merge conflict
-        if: steps.merge.outputs.conflict == 'true'
-        run: |
-          echo "❌ Merge conflict detected! Creating PR for manual resolution..."
-
-          PR_TITLE="Resolve Conflicts: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
-          PR_BODY="⚠️ Conflicts detected while promoting **${SOURCE_BRANCH} → ${TARGET_BRANCH}**.  
-          Please resolve manually in **${FEATURE_BRANCH}** and push changes.  
-          Once resolved, the auto-resume workflow will continue automatically."
-
-          PR_RESPONSE=$(curl -s -X POST \
-              -H "Authorization: Bearer $GITHUB_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls \
-              -d "{\"title\":\"$PR_TITLE\",\"head\":\"$FEATURE_BRANCH\",\"base\":\"$TARGET_BRANCH\",\"body\":\"$PR_BODY\"}")
-
-          PR_URL=$(echo "$PR_RESPONSE" | jq -r '.html_url')
-          PR_NUMBER=$(echo "$PR_RESPONSE" | jq -r '.number')
-
-          if [ "$PR_URL" == "null" ] || [ -z "$PR_URL" ]; then
-            echo "❌ Failed to create conflict PR. Check permissions."
-            exit 1
-          fi
-
-          echo "🛑 Workflow paused — manual action required."
-          echo "🔗 PR: $PR_URL"
-
-          # Add label to track for auto-resume
-          curl -s -X POST \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/issues/${PR_NUMBER}/labels \
-            -d "{\"labels\": [\"needs-conflict-resolution\", \"target-${TARGET_BRANCH}\"]}"
-
-          exit 0
 
       - name: 🪄 Create or Update PR (no conflicts)
         if: steps.merge.outputs.conflict == 'false'
