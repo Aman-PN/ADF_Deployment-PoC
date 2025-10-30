@@ -15,7 +15,6 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
-  workflows: write
 
 jobs:
   promote-and-manage-pr:
@@ -24,7 +23,6 @@ jobs:
 
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #GITHUB_USER: ${{ github.repository_owner }}
       GITHUB_USER: ${{ github.actor }}
       REPO_NAME: ${{ github.event.repository.name }}
       TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
@@ -43,7 +41,7 @@ jobs:
       - name: 🐧 Setup Dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y jq curl git
+          sudo apt-get install -y jq curl git gh
 
       - name: 🔍 Determine Source and Feature Branch
         id: vars
@@ -82,19 +80,23 @@ jobs:
           fi
           set -e
 
+      - name: 🚫 Exclude workflow files before pushing
+        run: |
+          echo "🔒 Excluding workflow files from push..."
+          git reset HEAD .github/workflows || true
+          git restore --staged .github/workflows || true
+          git checkout -- .github/workflows || true
+
       - name: 📤 Push Feature Branch (even if conflicts exist)
         run: |
           git push origin "${FEATURE_BRANCH}" --force
 
-      - name: 🧰 Install and Authenticate GitHub CLI
+      - name: 🧰 Authenticate GitHub CLI
         run: |
-          echo "🧩 Installing GitHub CLI..."
-          sudo apt-get install -y gh
           echo "${GITHUB_TOKEN}" | gh auth login --with-token
           gh auth status
 
       - name: 🪄 Create or Update Pull Request
-        if: success()
         run: |
           PR_TITLE="Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH}"
           PR_BODY="Automated promotion: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
