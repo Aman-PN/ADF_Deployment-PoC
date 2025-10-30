@@ -65,49 +65,66 @@ jobs:
           git pull origin "${TARGET_BRANCH}"
           git checkout -b "${FEATURE_BRANCH}"
 
-      - name: 🔀 Merge Source into Feature Branch
+      - name: 🔀 Merge Source into Feature Branch (Handle Conflicts)
         run: |
+          set +e
+          git merge origin/"${SOURCE_BRANCH}" --no-edit
+          MERGE_EXIT=$?
           set -e
-          git merge origin/"${SOURCE_BRANCH}" --no-edit || {
-            echo "❌ Merge conflict detected! Resolve manually."
-            exit 1
-          }
 
-      - name: 📤 Push Feature Branch
+          if [ $MERGE_EXIT -ne 0 ]; then
+            echo "❌ Merge conflict detected! Creating conflict-resolution PR..."
+            
+            git merge --abort || true
+            git checkout -b "${CONFLICT_BRANCH}"
+            echo "⚠️ Merge conflict occurred while merging ${SOURCE_BRANCH} → ${TARGET_BRANCH}" > CONFLICT_NOTE.txt
+            git add CONFLICT_NOTE.txt
+            git commit -m "Conflict detected: Manual resolution required"
+            git push origin "${CONFLICT_BRANCH}"
+
+            gh auth setup-git
+            gh auth status
+            gh pr create \
+              --title "⚠️ Conflict Resolution Required: ${SOURCE_BRANCH} → ${TARGET_BRANCH}" \
+              --body "Merge conflict detected while merging \`${SOURCE_BRANCH}\` into \`${TARGET_BRANCH}\`.  
+              Please resolve conflicts in this branch and merge manually." \
+              --base "${TARGET_BRANCH}" \
+              --head "${CONFLICT_BRANCH}" \
+              --label "merge-conflict"
+
+            echo "✅ Conflict resolution PR created successfully!"
+            exit 0
+          else
+            echo "✅ Merge successful!"
+          fi
+
+      - name: 📤 Push Feature Branch (If Merge Successful)
+        if: success()
         run: |
           git push origin "${FEATURE_BRANCH}"
 
       - name: 🪄 Create or Update Pull Request
+        if: success()
         run: |
           PR_TITLE="Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH}"
           PR_BODY="Automated promotion: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
 
           echo "🔍 Checking for existing open PR..."
-          EXISTING_PR_URL="https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/pulls?state=open&base=${TARGET_BRANCH}&head=${GITHUB_USER}:${SOURCE_BRANCH}"
+          EXISTING_PR_URL="https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls?state=open&base=${TARGET_BRANCH}&head=${USER_GITHUB}:${SOURCE_BRANCH}"
           
-          EXISTING_PR=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+          EXISTING_PR=$(curl -s -H "Authorization: token $TOKEN_GITHUB" \
                               -H "Accept: application/vnd.github+json" \
                               "$EXISTING_PR_URL" | jq -r '.[0].html_url')
 
           if [ "$EXISTING_PR" != "null" ] && [ -n "$EXISTING_PR" ]; then
             echo "🔁 PR already exists → $EXISTING_PR"
-            echo "✅ Skipping new PR creation."
           else
             echo "🪄 Creating new Pull Request..."
-            PR_URL=$(curl -s -X POST \
-                -H "Authorization: token $GITHUB_TOKEN" \
-                -H "Accept: application/vnd.github+json" \
-                https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/pulls \
-                -d "{\"title\":\"$PR_TITLE\",\"head\":\"$FEATURE_BRANCH\",\"base\":\"$TARGET_BRANCH\",\"body\":\"$PR_BODY\"}" \
-                | jq -r '.html_url')
-
-            if [ "$PR_URL" == "null" ] || [ -z "$PR_URL" ]; then
-              echo "❌ Failed to create Pull Request."
-              exit 1
-            else
-              echo "✅ New Pull Request created successfully!"
-              echo "🔗 $PR_URL"
-            fi
+            gh pr create \
+              --title "$PR_TITLE" \
+              --body "$PR_BODY" \
+              --base "$TARGET_BRANCH" \
+              --head "$FEATURE_BRANCH"
           fi
 
       - name: 🎉 Done
