@@ -21,8 +21,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      TOKEN_GITHUB: ${{ secrets.GITHUB_TOKEN }}
-      USER_GITHUB: ${{ github.repository_owner }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #GITHUB_USER: ${{ github.repository_owner }}
+      GITHUB_USER: ${{ github.actor }}
       REPO_NAME: ${{ github.event.repository.name }}
       TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
 
@@ -82,9 +83,9 @@ jobs:
           PR_BODY="Automated promotion: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
 
           echo "🔍 Checking for existing open PR..."
-          EXISTING_PR_URL="https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls?state=open&base=${TARGET_BRANCH}&head=${USER_GITHUB}:${SOURCE_BRANCH}"
+          EXISTING_PR_URL="https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/pulls?state=open&base=${TARGET_BRANCH}&head=${GITHUB_USER}:${SOURCE_BRANCH}"
           
-          EXISTING_PR=$(curl -s -H "Authorization: token $TOKEN_GITHUB" \
+          EXISTING_PR=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
                               -H "Accept: application/vnd.github+json" \
                               "$EXISTING_PR_URL" | jq -r '.[0].html_url')
 
@@ -94,9 +95,9 @@ jobs:
           else
             echo "🪄 Creating new Pull Request..."
             PR_URL=$(curl -s -X POST \
-                -H "Authorization: token $TOKEN_GITHUB" \
+                -H "Authorization: token $GITHUB_TOKEN" \
                 -H "Accept: application/vnd.github+json" \
-                https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls \
+                https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/pulls \
                 -d "{\"title\":\"$PR_TITLE\",\"head\":\"$FEATURE_BRANCH\",\"base\":\"$TARGET_BRANCH\",\"body\":\"$PR_BODY\"}" \
                 | jq -r '.html_url')
 
