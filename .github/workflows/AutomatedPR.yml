@@ -15,7 +15,6 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
-  workflows: write    # ✅ correct placement here
 
 jobs:
   promote-and-manage-pr:
@@ -81,12 +80,12 @@ jobs:
           fi
           set -e
 
-      - name: 🚫 Exclude workflow files before pushing
+      - name: 🚫 Remove workflow files before pushing (safe fix)
         run: |
-          echo "🔒 Excluding workflow files from push..."
-          git reset HEAD .github/workflows || true
-          git restore --staged .github/workflows || true
-          git checkout -- .github/workflows || true
+          echo "🧹 Removing workflow files to avoid permission issues..."
+          git checkout origin/${TARGET_BRANCH} -- .github/workflows || true
+          git add .github/workflows
+          git commit -m "Revert workflow files to base branch to avoid GITHUB_TOKEN block" || true
 
       - name: 📤 Push Feature Branch (even if conflicts exist)
         run: |
