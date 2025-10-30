@@ -63,6 +63,8 @@ jobs:
       - name: 🔄 Prepare Branches
         run: |
           git fetch origin
+          git switch "${SOURCE_BRANCH}"
+          git pull origin "${SOURCE_BRANCH}"
           git switch "${TARGET_BRANCH}"
           git pull origin "${TARGET_BRANCH}"
           git checkout -b "${FEATURE_BRANCH}"
