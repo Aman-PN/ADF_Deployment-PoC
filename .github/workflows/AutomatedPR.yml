@@ -15,6 +15,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  workflows: write    # ✅ correct placement here
 
 jobs:
   promote-and-manage-pr:
