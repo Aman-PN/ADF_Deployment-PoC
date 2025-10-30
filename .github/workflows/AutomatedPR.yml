@@ -67,19 +67,22 @@ jobs:
           git pull origin "${TARGET_BRANCH}"
           git checkout -b "${FEATURE_BRANCH}"
 
-      - name: 🔀 Merge Source into Feature Branch (Handle Conflicts)
+      - name: 🔀 Merge ${{ inputs.source_branch }} into feature branch
         run: |
           set +e
-          git merge origin/"$SOURCE_BRANCH" --no-edit || {
-            echo "Merge conflict detected. Resolve manually."
-            exit 1
-          }
-            echo "✅ Merge successful!"
-            
-      - name: 📤 Push Feature Branch (If Merge Successful)
-        if: success()
+          echo "Merging origin/${{ inputs.source_branch }} into ${FEATURE_BRANCH}..."
+          git merge origin/${{ inputs.source_branch }} --no-edit
+          MERGE_EXIT_CODE=$?
+          if [ $MERGE_EXIT_CODE -ne 0 ]; then
+            echo "❌ Merge conflict detected! Committing conflict markers for manual resolution."
+            git add .
+            git commit -am "Conflict detected during merge - manual resolution required" || true
+          fi
+          set -e
+
+      - name: 📤 Push Feature Branch (even if conflicts exist)
         run: |
-          git push origin "${FEATURE_BRANCH}"
+          git push origin "${FEATURE_BRANCH}" --force
 
       - name: 🪄 Create or Update Pull Request
         if: success()
