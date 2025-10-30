@@ -23,6 +23,7 @@ jobs:
 
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #GITHUB_USER: ${{ github.repository_owner }}
       GITHUB_USER: ${{ github.actor }}
       REPO_NAME: ${{ github.event.repository.name }}
       TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
@@ -67,7 +68,7 @@ jobs:
           git pull origin "${TARGET_BRANCH}"
           git checkout -b "${FEATURE_BRANCH}"
 
-      - name: 🔀 Merge $SOURCE_BRANCH into feature branch
+      - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch
         run: |
           set +e
           echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH}..."
@@ -92,6 +93,7 @@ jobs:
           gh auth status
 
       - name: 🪄 Create or Update Pull Request
+        if: success()
         run: |
           PR_TITLE="Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH}"
           PR_BODY="Automated promotion: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
