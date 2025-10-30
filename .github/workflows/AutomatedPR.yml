@@ -67,11 +67,11 @@ jobs:
           git pull origin "${TARGET_BRANCH}"
           git checkout -b "${FEATURE_BRANCH}"
 
-      - name: 🔀 Merge ${{ inputs.source_branch }} into feature branch
+      - name: 🔀 Merge ${SOURCE_BRANCH} into feature branch
         run: |
           set +e
-          echo "Merging origin/${{ inputs.source_branch }} into ${FEATURE_BRANCH}..."
-          git merge origin/${{ inputs.source_branch }} --no-edit
+          echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH}..."
+          git merge origin/${SOURCE_BRANCH} --no-edit
           MERGE_EXIT_CODE=$?
           if [ $MERGE_EXIT_CODE -ne 0 ]; then
             echo "❌ Merge conflict detected! Committing conflict markers for manual resolution."
