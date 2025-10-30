@@ -56,7 +56,9 @@ jobs:
 
           TODAY=$(TZ='Asia/Kolkata' date +'%d_%m_%y_%H_%M')
           FEATURE_BRANCH="feature/${TARGET_BRANCH}-${TODAY}"
+          CONFLICT_BRANCH="conflict/${TARGET_BRANCH}-${TODAY}"
           echo "FEATURE_BRANCH=$FEATURE_BRANCH" >> $GITHUB_ENV
+          echo "CONFLICT_BRANCH=$CONFLICT_BRANCH" >> $GITHUB_ENV
 
       - name: 🔄 Prepare Branches
         run: |
