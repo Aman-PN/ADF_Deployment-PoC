@@ -67,11 +67,11 @@ jobs:
           git pull origin "${TARGET_BRANCH}"
           git checkout -b "${FEATURE_BRANCH}"
 
-      - name: 🔀 Merge ${SOURCE_BRANCH} into feature branch
+      - name: 🔀 Merge $SOURCE_BRANCH into feature branch
         run: |
           set +e
           echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH}..."
-          git merge origin/${SOURCE_BRANCH} --no-edit
+          git merge origin/"${SOURCE_BRANCH}" --no-edit
           MERGE_EXIT_CODE=$?
           if [ $MERGE_EXIT_CODE -ne 0 ]; then
             echo "❌ Merge conflict detected! Committing conflict markers for manual resolution."
@@ -85,13 +85,12 @@ jobs:
           git push origin "${FEATURE_BRANCH}" --force
 
       - name: 🪄 Create or Update Pull Request
-        if: success()
         run: |
           PR_TITLE="Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH}"
           PR_BODY="Automated promotion: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
 
           echo "🔍 Checking for existing open PR..."
-          EXISTING_PR_URL="https://api.github.com/repos/${USER_GITHUB}/${REPO_NAME}/pulls?state=open&base=${TARGET_BRANCH}&head=${USER_GITHUB}:${SOURCE_BRANCH}"
+          EXISTING_PR_URL="https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/pulls?state=open&base=${TARGET_BRANCH}&head=${GITHUB_USER}:${SOURCE_BRANCH}"
           
           EXISTING_PR=$(curl -s -H "Authorization: token $TOKEN_GITHUB" \
                               -H "Accept: application/vnd.github+json" \
