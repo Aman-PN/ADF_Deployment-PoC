@@ -1,1 +1,6 @@
+<<<<<<< HEAD
 I m Aman
+=======
+I m Aman
+My name is PAN
+>>>>>>> origin/develop
