@@ -66,6 +66,13 @@ jobs:
           git switch "${TARGET_BRANCH}"
           git pull origin "${TARGET_BRANCH}"
           git checkout -b "${FEATURE_BRANCH}"
+          
+      - name: 🚫 Remove workflow files before pushing (safe fix)
+        run: |
+          echo "🧹 Removing workflow files to avoid permission issues..."
+          git checkout origin/${TARGET_BRANCH} -- .github/workflows || true
+          git add .github/workflows
+          git commit -m "Revert workflow files to base branch to avoid GITHUB_TOKEN block" || true
 
       - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch
         run: |
@@ -79,13 +86,6 @@ jobs:
             git commit -am "Conflict detected during merge - manual resolution required" || true
           fi
           set -e
-
-      - name: 🚫 Remove workflow files before pushing (safe fix)
-        run: |
-          echo "🧹 Removing workflow files to avoid permission issues..."
-          git checkout origin/${TARGET_BRANCH} -- .github/workflows || true
-          git add .github/workflows
-          git commit -m "Revert workflow files to base branch to avoid GITHUB_TOKEN block" || true
 
       - name: 📤 Push Feature Branch (even if conflicts exist)
         run: |
