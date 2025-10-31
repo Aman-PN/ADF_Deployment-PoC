@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-Hello, Im Aman
-=======
 Hello, Im Aman
 I like tea
 I like seeds
->>>>>>> origin/develop
