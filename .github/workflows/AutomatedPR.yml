@@ -117,7 +117,6 @@ jobs:
             git commit -am "Conflict detected during merge - manual resolution required" || true
           fi
           set -e
-
           echo "📄 Listing changed files after merge:"
           git diff --name-only origin/"${TARGET_BRANCH}" HEAD
 
