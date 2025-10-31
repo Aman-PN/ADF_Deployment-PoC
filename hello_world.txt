@@ -1,6 +1,11 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 I m Aman
+=======
+I m Aman
+My name is PAN
+>>>>>>> origin/develop
 =======
 I m Aman
 My name is PAN
