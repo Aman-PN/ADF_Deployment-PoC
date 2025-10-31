@@ -91,10 +91,10 @@ jobs:
         run: |
           git push origin "${FEATURE_BRANCH}" --force
 
-      - name: 🧰 Authenticate GitHub CLI
-        run: |
-          echo "${GITHUB_TOKEN}" | gh auth login --with-token
-          gh auth status
+      # - name: 🧰 Authenticate GitHub CLI
+      #   run: |
+      #     echo "${GITHUB_TOKEN}" | gh auth login --with-token
+      #     gh auth status
 
       - name: 🪄 Create or Update Pull Request
         run: |
