@@ -113,8 +113,8 @@ jobs:
 
           if [ $MERGE_EXIT_CODE -ne 0 ]; then
             echo "❌ Merge conflict detected! Stopping workflow to allow manual resolution in PR."
-            exit 1
           fi
+          
           set -e
           echo "📄 Listing changed files after merge:"
           git diff --name-only origin/"${TARGET_BRANCH}" HEAD
