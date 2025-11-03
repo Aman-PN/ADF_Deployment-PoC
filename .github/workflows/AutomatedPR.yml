@@ -134,7 +134,7 @@ jobs:
       #     gh auth status
 
       - name: 🪄 Create or Update Pull Request
-        if: MERGE_CONFLICT == 'false'
+        if: env.MERGE_CONFLICT == 'false'
         run: |
           PR_TITLE="Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH}"
           PR_BODY="Automated promotion: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
