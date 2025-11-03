@@ -1,1 +1,6 @@
+<<<<<<< HEAD
 Added a new code
+=======
+Added a new code by Aman
+modified the code 
+>>>>>>> origin/develop
