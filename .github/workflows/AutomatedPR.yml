@@ -89,6 +89,7 @@ jobs:
       #     git commit -m "Revert workflow files to base branch to avoid GITHUB_TOKEN block" || true
 
       - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch (excluding workflows)
+        id: merge_step
         run: |
           set +e
           echo "Fetching latest changes from origin/${SOURCE_BRANCH}..."
@@ -113,8 +114,11 @@ jobs:
 
           if [ $MERGE_EXIT_CODE -ne 0 ]; then
             echo "❌ Merge conflict detected! Committing conflict markers for manual resolution."
+            echo "MERGE_CONFLICT=true" >> $GITHUB_ENV
             git add .
             git commit -am "Conflict detected during merge - manual resolution required" || true
+          else
+            echo "MERGE_CONFLICT=false" >> $GITHUB_ENV
           fi
           set -e
           echo "📄 Listing changed files after merge:"
@@ -130,6 +134,7 @@ jobs:
       #     gh auth status
 
       - name: 🪄 Create or Update Pull Request
+        if: MERGE_CONFLICT == 'false'
         run: |
           PR_TITLE="Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH}"
           PR_BODY="Automated promotion: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
