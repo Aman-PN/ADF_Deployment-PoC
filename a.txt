@@ -1,2 +1,8 @@
+<<<<<<< HEAD
 Added a new code by Aman
 modified the code 
+=======
+Added a new code by Aman Nandgaule
+modified the code 
+I added next line
+>>>>>>> origin/develop
