@@ -38,15 +38,15 @@ jobs:
       - name: 🪄 Create Pull Request
         if: steps.conflict-check.outputs.conflicts == 'false'
         run: |
-          BASE_BRANCH=$(echo "${BRANCH_NAME}" | cut -d'-' -f1 | cut -d'/' -f2)
-          SOURCE_BRANCH=$(echo "${BRANCH_NAME}" | cut -d'/' -f2)
+          BASE_BRANCH="${BRANCH_NAME#feature/}"       # Extract stage or release
+          SOURCE_BRANCH="${BRANCH_NAME}"              # Full feature branch name
 
-          PR_TITLE="Promote ${BASE_BRANCH} to ${SOURCE_BRANCH}"
+          PR_TITLE="Promote ${BASE_BRANCH} branch"
           PR_BODY="Automated PR creation after conflict resolution."
 
           echo "Creating PR from ${SOURCE_BRANCH} to ${BASE_BRANCH}..."
           gh pr create \
-              --title "$PR_TITLE" \
-              --body "$PR_BODY" \
-              --base "$TARGET_BRANCH" \
-              --head "$FEATURE_BRANCH"
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            --base "$BASE_BRANCH" \
+            --head "$SOURCE_BRANCH"
