@@ -1,3 +1,9 @@
+<<<<<<< HEAD
 Added a new code by Aman Nandgaule
 modified the code 
 I added next line
+=======
+Added a new code by Aman Pramodkumar Nandgaule
+modified the code 
+I added next line, by Aman Pramodkumar Nandgaule
+>>>>>>> origin/develop
