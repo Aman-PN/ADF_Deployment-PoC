@@ -112,9 +112,8 @@ jobs:
           git commit -m "Restore workflows after merge" || true
 
           if [ $MERGE_EXIT_CODE -ne 0 ]; then
-            echo "❌ Merge conflict detected! Committing conflict markers for manual resolution."
-            git add .
-            git commit -am "Conflict detected during merge - manual resolution required" || true
+            echo "❌ Merge conflict detected! Stopping workflow to allow manual resolution in PR."
+            exit 1
           fi
           set -e
           echo "📄 Listing changed files after merge:"
