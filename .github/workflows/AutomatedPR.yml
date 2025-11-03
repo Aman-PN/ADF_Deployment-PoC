@@ -102,7 +102,7 @@ jobs:
           git commit -m "Temporarily remove workflows before merge" || true
 
           echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH}..."
-          git merge origin/"${SOURCE_BRANCH}" --no-edit --allow-unrelated-histories || true
+          git merge origin/"${SOURCE_BRANCH}" --no-edit
           MERGE_EXIT_CODE=$?
 
           echo "Restoring .github/workflows after merge..."
@@ -111,14 +111,11 @@ jobs:
           git add .github/workflows
           git commit -m "Restore workflows after merge" || true
 
-
           if [ $MERGE_EXIT_CODE -ne 0 ]; then
-            echo "⚠ Merge conflict detected! Adding conflicted files and committing with markers."
-            git add --force .
-            git commit -m "Merge with conflicts for manual resolution" || true
+            echo "❌ Merge conflict detected! Committing conflict markers for manual resolution."
+            git add .
+            git commit -am "Conflict detected during merge - manual resolution required" || true
           fi
-
-
           set -e
           echo "📄 Listing changed files after merge:"
           git diff --name-only origin/"${TARGET_BRANCH}" HEAD
