@@ -111,11 +111,13 @@ jobs:
           git add .github/workflows
           git commit -m "Restore workflows after merge" || true
 
+
           if [ $MERGE_EXIT_CODE -ne 0 ]; then
-            echo "⚠ Merge conflict detected! Committing conflict markers so GitHub can show conflicts."
-            git add -A
-            git commit -m "Merge with conflicts for manual resolution" --no-verify || true
+            echo "⚠ Merge conflict detected! Adding conflicted files and committing with markers."
+            git add --force .
+            git commit -m "Merge with conflicts for manual resolution" || true
           fi
+
 
           set -e
           echo "📄 Listing changed files after merge:"
