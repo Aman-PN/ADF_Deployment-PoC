@@ -1,0 +1,52 @@
+name: Create PR After Conflict Resolution
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-pr-if-clean:
+    name: 🤖 Create PR After Conflict Resolution
+    runs-on: ubuntu-latest
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_USER: ${{ github.actor }}
+      REPO_NAME: ${{ github.event.repository.name }}
+      BRANCH_NAME: ${{ github.ref_name }}
+
+    steps:
+      - name: 🧩 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔍 Check for Conflict Markers
+        id: conflict-check
+        run: |
+          if git grep -q '<<<<<<<'; then
+            echo "conflicts=true" >> $GITHUB_OUTPUT
+          else
+            echo "conflicts=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 🪄 Create Pull Request
+        if: steps.conflict-check.outputs.conflicts == 'false'
+        run: |
+          BASE_BRANCH=$(echo "${BRANCH_NAME}" | cut -d'-' -f1 | cut -d'/' -f2)
+          SOURCE_BRANCH=$(echo "${BRANCH_NAME}" | cut -d'/' -f2)
+
+          PR_TITLE="Promote ${BASE_BRANCH} to ${SOURCE_BRANCH}"
+          PR_BODY="Automated PR creation after conflict resolution."
+
+          echo "Creating PR from ${SOURCE_BRANCH} to ${BASE_BRANCH}..."
+          gh pr create \
+              --title "$PR_TITLE" \
+              --body "$PR_BODY" \
+              --base "$TARGET_BRANCH" \
+              --head "$FEATURE_BRANCH"
