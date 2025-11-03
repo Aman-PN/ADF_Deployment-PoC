@@ -112,7 +112,9 @@ jobs:
           git commit -m "Restore workflows after merge" || true
 
           if [ $MERGE_EXIT_CODE -ne 0 ]; then
-            echo "⚠ Merge conflict detected! Proceeding to push branch and create PR for manual resolution."
+            echo "⚠ Merge conflict detected! Committing conflict markers so GitHub can show conflicts."
+            git add -A
+            git commit -m "Merge with conflicts for manual resolution" || true
           fi
 
           set -e
