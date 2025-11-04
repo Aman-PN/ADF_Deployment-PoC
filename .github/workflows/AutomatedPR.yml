@@ -37,6 +37,7 @@ jobs:
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
+          git config merge.ours.driver true
 
       - name: 🐧 Setup Dependencies
         run: |
@@ -91,7 +92,6 @@ jobs:
       - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch (excluding workflows)
         id: merge_step
         run: |
-          git config merge.ours.driver true
           git fetch origin "${SOURCE_BRANCH}"
           echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH} using ours strategy for workflows..."
           git merge origin/"${SOURCE_BRANCH}" --no-edit || true
