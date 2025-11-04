@@ -3,21 +3,19 @@ name: Create PR After Conflict Resolution
 on:
   push:
     branches:
-      - 'feature/**'
+      - 'feature/stage*'
+      - 'feature/release*'
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  create-pr-if-clean:
-    name: 🤖 Create PR After Conflict Resolution
+  update-pr-after-resolution:
     runs-on: ubuntu-latest
 
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GITHUB_USER: ${{ github.actor }}
-      REPO_NAME: ${{ github.event.repository.name }}
       BRANCH_NAME: ${{ github.ref_name }}
 
     steps:
@@ -26,27 +24,42 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🔍 Check for Conflict Markers
-        id: conflict-check
+      - name: 🔍 Check Existing PR and Labels
         run: |
-          if git grep -q '<<<<<<<'; then
-            echo "conflicts=true" >> $GITHUB_OUTPUT
+          PR_NUMBER=$(gh pr list --head "${BRANCH_NAME}" --json number --jq '.[0].number')
+          echo "Detected PR Number: $PR_NUMBER"
+          if [ -n "$PR_NUMBER" ]; then
+            LABELS=$(gh pr view "$PR_NUMBER" --json labels --jq '.labels[].name')
+            echo "Current labels: $LABELS"
+            if echo "$LABELS" | grep -q "merge-conflict"; then
+              echo "LABEL_STATUS=merge-conflict" >> $GITHUB_ENV
+            elif echo "$LABELS" | grep -q "auto-promotion-ready"; then
+              echo "LABEL_STATUS=auto-promotion-ready" >> $GITHUB_ENV
+            else
+              echo "LABEL_STATUS=none" >> $GITHUB_ENV
+            fi
           else
-            echo "conflicts=false" >> $GITHUB_OUTPUT
+            echo "LABEL_STATUS=none" >> $GITHUB_ENV
           fi
-
-      - name: 🪄 Create Pull Request
-        if: steps.conflict-check.outputs.conflicts == 'false'
+      - name: 🐞 Debug PR Info
         run: |
-          BASE_BRANCH="${BRANCH_NAME#feature/}"       # Extract stage or release
-          SOURCE_BRANCH="${BRANCH_NAME}"              # Full feature branch name
+          echo "Branch Name: $BRANCH_NAME"
+          echo "PR Number: $(gh pr list --head "${BRANCH_NAME}" --json number --jq '.[0].number')"
+          echo "Label Status: $LABEL_STATUS"
 
-          PR_TITLE="Promote ${BASE_BRANCH} branch"
-          PR_BODY="Automated PR creation after conflict resolution."
-
-          echo "Creating PR from ${SOURCE_BRANCH} to ${BASE_BRANCH}..."
-          gh pr create \
-            --title "$PR_TITLE" \
-            --body "$PR_BODY" \
-            --base "$BASE_BRANCH" \
-            --head "$SOURCE_BRANCH"
+      - name: 🪄 Update PR After Conflict Resolution
+        if: env.LABEL_STATUS != 'none'
+        run: |
+          PR_NUMBER=$(gh pr list --head "${BRANCH_NAME}" --json number --jq '.[0].number')
+          if [ "${LABEL_STATUS}" == "merge-conflict" ]; then
+            echo "Removing merge-conflict and adding auto-promotion-ready..."
+            gh pr edit "$PR_NUMBER" \
+              --remove-label "merge-conflict" \
+              --add-label "auto-promotion-ready" \
+              --body "Conflicts resolved and branch updated."
+          elif [ "${LABEL_STATUS}" == "auto-promotion-ready" ]; then
+            echo "PR already ready, just updating body..."
+            gh pr edit "$PR_NUMBER" --body "Branch updated after latest push."
+          else
+            echo "No relevant label found, skipping update."
+          fi
