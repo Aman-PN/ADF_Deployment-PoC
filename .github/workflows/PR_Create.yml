@@ -29,18 +29,22 @@ jobs:
       - name: 🔍 Check for Conflict Markers
         id: conflict-check
         run: |
-          if git grep -q '<<<<<<<'; then
-            echo "conflicts=true" >> $GITHUB_OUTPUT
+          if git grep -q -E '<<<<<<<|=======|>>>>>>>'; then
+            echo "conflicts=true" >> $GITHUB_ENV
           else
-            echo "conflicts=false" >> $GITHUB_OUTPUT
+            echo "conflicts=false" >> $GITHUB_ENV
           fi
 
+      - name: 🐞 Debug Conflict Status
+        run: echo "Conflict status: $CONFLICTS"
+        env:
+          CONFLICTS: ${{ env.conflicts }}
+
       - name: 🪄 Create Pull Request
-        if: steps.conflict-check.outputs.conflicts == 'false'
+        if: env.conflicts == 'false'
         run: |
           BASE_BRANCH="${BRANCH_NAME#feature/}"       # Extract stage or release
           SOURCE_BRANCH="${BRANCH_NAME}"              # Full feature branch name
-
           PR_TITLE="Promote ${BASE_BRANCH} branch"
           PR_BODY="Automated PR creation after conflict resolution."
 
