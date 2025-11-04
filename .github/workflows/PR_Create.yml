@@ -36,6 +36,7 @@ jobs:
             fi
           else
             echo "LABEL_FOUND=false" >> $GITHUB_ENV
+          fi
 
       - name: 🪄 Update Pull Request After Conflict Resolution
         if: env.LABEL_FOUND == 'true'
