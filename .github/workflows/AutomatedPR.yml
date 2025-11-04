@@ -37,7 +37,6 @@ jobs:
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git config merge.ours.driver true
       - name: 🐧 Setup Dependencies
         run: |
           sudo apt-get update -y
@@ -86,10 +85,19 @@ jobs:
 
       - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch (excluding workflows)
         id: merge_step
-        run: |        
-          echo ".github/workflows/* merge=ours" >> .gitattributes
-          git add .gitattributes
-          git commit -m "Add merge strategy for workflows" || true
+        run: |
+          
+          if ! grep -Fxq ".github/workflows/* merge=ours" .gitattributes; then
+            echo ".github/workflows/* merge=ours" >> .gitattributes
+            git add .gitattributes
+            git commit -m "Add merge strategy for workflows" || true
+          else
+            echo ".gitattributes already contains merge rule"
+          fi
+
+          # echo ".github/workflows/* merge=ours" >> .gitattributes
+          # git add .gitattributes
+          # git commit -m "Add merge strategy for workflows" || true
           git config merge.ours.driver true
           git fetch origin "${SOURCE_BRANCH}"
           echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH} using ours strategy for workflows..."
