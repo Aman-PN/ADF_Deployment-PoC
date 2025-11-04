@@ -133,28 +133,21 @@ jobs:
       #     echo "${GITHUB_TOKEN}" | gh auth login --with-token
       #     gh auth status
 
-      - name: 🪄 Create or Update Pull Request
-        if: env.MERGE_CONFLICT == 'false'
+      # ✅ Always create PR (even if conflicts exist)
+      - name: 🪄 Create Pull Request
         run: |
           PR_TITLE="Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH}"
           PR_BODY="Automated promotion: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
-
-          echo "🔍 Checking for existing open PR..."
-          EXISTING_PR_URL="https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/pulls?state=open&base=${TARGET_BRANCH}&head=${GITHUB_USER}:${SOURCE_BRANCH}"
-          
-          EXISTING_PR=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-                              -H "Accept: application/vnd.github+json" \
-                              "$EXISTING_PR_URL" | jq -r '.[0].html_url')
-
-          if [ "$EXISTING_PR" != "null" ] && [ -n "$EXISTING_PR" ]; then
-            echo "🔁 PR already exists → $EXISTING_PR"
+          gh pr create \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            --base "$TARGET_BRANCH" \
+            --head "$FEATURE_BRANCH"
+          PR_NUMBER=$(gh pr list --head "${FEATURE_BRANCH}" --json number --jq '.[0].number')
+          if [ "${MERGE_CONFLICT}" == "true" ]; then
+            gh pr edit "$PR_NUMBER" --add-label "conflict-present"
           else
-            echo "🪄 Creating new Pull Request..."
-            gh pr create \
-              --title "$PR_TITLE" \
-              --body "$PR_BODY" \
-              --base "$TARGET_BRANCH" \
-              --head "$FEATURE_BRANCH"
+            gh pr edit "$PR_NUMBER" --add-label "auto-promotion-ready"
           fi
 
       - name: 🎉 Done
