@@ -40,7 +40,7 @@ jobs:
             fi
           else
             echo "LABEL_STATUS=none" >> $GITHUB_ENV
-
+          fi
       - name: 🐞 Debug PR Info
         run: |
           echo "Branch Name: $BRANCH_NAME"
@@ -62,3 +62,4 @@ jobs:
             gh pr edit "$PR_NUMBER" --body "Branch updated after latest push."
           else
             echo "No relevant label found, skipping update."
+          fi
