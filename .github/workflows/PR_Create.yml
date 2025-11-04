@@ -3,7 +3,8 @@ name: Create PR After Conflict Resolution
 on:
   push:
     branches:
-      - 'feature/**'
+      - 'feature/stage*'
+      - 'feature/release*'
 
 permissions:
   contents: write
@@ -11,13 +12,10 @@ permissions:
 
 jobs:
   create-pr-if-clean:
-    name: 🤖 Create PR After Conflict Resolution
     runs-on: ubuntu-latest
 
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GITHUB_USER: ${{ github.actor }}
-      REPO_NAME: ${{ github.event.repository.name }}
       BRANCH_NAME: ${{ github.ref_name }}
 
     steps:
@@ -26,27 +24,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🔍 Check for Conflict Markers
-        id: conflict-check
+      - name: 🔍 Check for Label on Existing PR
         run: |
-          if git grep -q '<<<<<<<'; then
-            echo "conflicts=true" >> $GITHUB_OUTPUT
+          PR_NUMBER=$(gh pr list --head "${BRANCH_NAME}" --json number --jq '.[0].number')
+          if [ -n "$PR_NUMBER" ]; then
+            LABELS=$(gh pr view "$PR_NUMBER" --json labels --jq '.labels[].name')
+            if echo "$LABELS" | grep -q "auto-promotion-ready"; then
+              echo "LABEL_FOUND=true" >> $GITHUB_ENV
+            else
+              echo "LABEL_FOUND=false" >> $GITHUB_ENV
+            fi
           else
-            echo "conflicts=false" >> $GITHUB_OUTPUT
-          fi
+            echo "LABEL_FOUND=false" >> $GITHUB_ENV
 
-      - name: 🪄 Create Pull Request
-        if: steps.conflict-check.outputs.conflicts == 'false'
+      - name: 🪄 Update Pull Request After Conflict Resolution
+        if: env.LABEL_FOUND == 'true'
         run: |
-          BASE_BRANCH="${BRANCH_NAME#feature/}"       # Extract stage or release
-          SOURCE_BRANCH="${BRANCH_NAME}"              # Full feature branch name
-
-          PR_TITLE="Promote ${BASE_BRANCH} branch"
-          PR_BODY="Automated PR creation after conflict resolution."
-
-          echo "Creating PR from ${SOURCE_BRANCH} to ${BASE_BRANCH}..."
-          gh pr create \
-            --title "$PR_TITLE" \
-            --body "$PR_BODY" \
-            --base "$BASE_BRANCH" \
-            --head "$SOURCE_BRANCH"
+          PR_NUMBER=$(gh pr list --head "${BRANCH_NAME}" --json number --jq '.[0].number')
+          echo "Updating PR #$PR_NUMBER for ${BRANCH_NAME}..."
+          gh pr edit "$PR_NUMBER" --body "Conflicts resolved and branch updated."
