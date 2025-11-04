@@ -145,7 +145,7 @@ jobs:
             --head "$FEATURE_BRANCH"
           PR_NUMBER=$(gh pr list --head "${FEATURE_BRANCH}" --json number --jq '.[0].number')
           if [ "${MERGE_CONFLICT}" == "true" ]; then
-            gh pr edit "$PR_NUMBER" --add-label "conflict-present"
+            gh pr edit "$PR_NUMBER" --add-label "merge-conflict"
           else
             gh pr edit "$PR_NUMBER" --add-label "auto-promotion-ready"
           fi
