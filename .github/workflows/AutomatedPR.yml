@@ -37,13 +37,10 @@ jobs:
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git config merge.ours.driver true
-
       - name: 🐧 Setup Dependencies
         run: |
           sudo apt-get update -y
           sudo apt-get install -y jq curl git gh
-
       - name: 🔍 Determine Source and Feature Branch
         id: vars
         run: |
@@ -54,11 +51,9 @@ jobs:
           else
             echo "❌ Invalid target branch"; exit 1
           fi
-
           TODAY=$(TZ='Asia/Kolkata' date +'%d_%m_%y_%H_%M')
           FEATURE_BRANCH="feature/${TARGET_BRANCH}-${TODAY}"
           echo "FEATURE_BRANCH=$FEATURE_BRANCH" >> $GITHUB_ENV
-
       - name: 🔄 Prepare Branches
         run: |
           git fetch origin
@@ -68,7 +63,6 @@ jobs:
           git pull origin "${TARGET_BRANCH}"
           git checkout -b "${FEATURE_BRANCH}"
           
-
       # - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch
       #   run: |
       #     set +e
@@ -89,11 +83,17 @@ jobs:
       #     git add .github/workflows
       #     git commit -m "Revert workflow files to base branch to avoid GITHUB_TOKEN block" || true
 
-      - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch
+      - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch (excluding workflows)
+        id: merge_step
         run: |
-          echo ".github/workflows/* merge=ours" >> .gitattributes
-          git add .gitattributes
-          git commit -m "Add merge strategy for workflows" || true
+          
+          if ! grep -Fxq ".github/workflows/* merge=ours" .gitattributes; then
+            echo ".github/workflows/* merge=ours" >> .gitattributes
+            git add .gitattributes
+            git commit -m "Add merge strategy for workflows" || true
+          else
+            echo ".gitattributes already contains merge rule"
+          fi
           git config merge.ours.driver true
           git fetch origin "${SOURCE_BRANCH}"
           echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH} using ours strategy for workflows..."
@@ -109,11 +109,9 @@ jobs:
           set -e
           echo "📄 Listing changed files after merge:"
           git diff --name-only origin/"${TARGET_BRANCH}" HEAD
-
       - name: 📤 Push Feature Branch (even if conflicts exist)
         run: |
           git push origin "${FEATURE_BRANCH}" --force
-
       # - name: 🧰 Authenticate GitHub CLI
       #   run: |
       #     echo "${GITHUB_TOKEN}" | gh auth login --with-token
@@ -135,6 +133,5 @@ jobs:
           else
             gh pr edit "$PR_NUMBER" --add-label "auto-promotion-ready"
           fi
-
       - name: 🎉 Done
         run: echo "✅ Promotion process completed successfully!"
