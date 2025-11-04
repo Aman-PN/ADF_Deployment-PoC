@@ -91,11 +91,7 @@ jobs:
       - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch (excluding workflows)
         id: merge_step
         run: |
-          echo ".github/workflows/* merge=ours" >> .gitattributes
-          git add .gitattributes
-          git commit -m "Add merge strategy for workflows" || true
           git config merge.ours.driver true
-
           git fetch origin "${SOURCE_BRANCH}"
           echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH} using ours strategy for workflows..."
           git merge origin/"${SOURCE_BRANCH}" --no-edit || true
