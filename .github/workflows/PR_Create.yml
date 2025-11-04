@@ -11,7 +11,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  create-pr-if-clean:
+  update-pr-after-resolution:
     runs-on: ubuntu-latest
 
     env:
@@ -24,23 +24,41 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🔍 Check for Label on Existing PR
+      - name: 🔍 Check Existing PR and Labels
         run: |
           PR_NUMBER=$(gh pr list --head "${BRANCH_NAME}" --json number --jq '.[0].number')
+          echo "Detected PR Number: $PR_NUMBER"
           if [ -n "$PR_NUMBER" ]; then
             LABELS=$(gh pr view "$PR_NUMBER" --json labels --jq '.labels[].name')
-            if echo "$LABELS" | grep -q "auto-promotion-ready"; then
-              echo "LABEL_FOUND=true" >> $GITHUB_ENV
+            echo "Current labels: $LABELS"
+            if echo "$LABELS" | grep -q "merge-conflict"; then
+              echo "LABEL_STATUS=merge-conflict" >> $GITHUB_ENV
+            elif echo "$LABELS" | grep -q "auto-promotion-ready"; then
+              echo "LABEL_STATUS=auto-promotion-ready" >> $GITHUB_ENV
             else
-              echo "LABEL_FOUND=false" >> $GITHUB_ENV
+              echo "LABEL_STATUS=none" >> $GITHUB_ENV
             fi
           else
-            echo "LABEL_FOUND=false" >> $GITHUB_ENV
-          fi
+            echo "LABEL_STATUS=none" >> $GITHUB_ENV
 
-      - name: 🪄 Update Pull Request After Conflict Resolution
-        if: env.LABEL_FOUND == 'true'
+      - name: 🐞 Debug PR Info
+        run: |
+          echo "Branch Name: $BRANCH_NAME"
+          echo "PR Number: $(gh pr list --head "${BRANCH_NAME}" --json number --jq '.[0].number')"
+          echo "Label Status: $LABEL_STATUS"
+
+      - name: 🪄 Update PR After Conflict Resolution
+        if: env.LABEL_STATUS != 'none'
         run: |
           PR_NUMBER=$(gh pr list --head "${BRANCH_NAME}" --json number --jq '.[0].number')
-          echo "Updating PR #$PR_NUMBER for ${BRANCH_NAME}..."
-          gh pr edit "$PR_NUMBER" --body "Conflicts resolved and branch updated."
+          if [ "${LABEL_STATUS}" == "merge-conflict" ]; then
+            echo "Removing merge-conflict and adding auto-promotion-ready..."
+            gh pr edit "$PR_NUMBER" \
+              --remove-label "merge-conflict" \
+              --add-label "auto-promotion-ready" \
+              --body "Conflicts resolved and branch updated."
+          elif [ "${LABEL_STATUS}" == "auto-promotion-ready" ]; then
+            echo "PR already ready, just updating body..."
+            gh pr edit "$PR_NUMBER" --body "Branch updated after latest push."
+          else
+            echo "No relevant label found, skipping update."
