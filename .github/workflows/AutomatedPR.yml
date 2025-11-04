@@ -66,27 +66,6 @@ jobs:
           git switch "${TARGET_BRANCH}"
           git pull origin "${TARGET_BRANCH}"
           git checkout -b "${FEATURE_BRANCH}"
-          
-
-      # - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch
-      #   run: |
-      #     set +e
-      #     echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH}..."
-      #     git merge origin/"${SOURCE_BRANCH}" --no-edit
-      #     MERGE_EXIT_CODE=$?
-      #     if [ $MERGE_EXIT_CODE -ne 0 ]; then
-      #       echo "❌ Merge conflict detected! Committing conflict markers for manual resolution."
-      #       git add .
-      #       git commit -am "Conflict detected during merge - manual resolution required" || true
-      #     fi
-      #     set -e
-
-      # - name: 🚫 Remove workflow files before pushing (safe fix)
-      #   run: |
-      #     echo "🧹 Removing workflow files to avoid permission issues..."
-      #     git checkout origin/${TARGET_BRANCH} -- .github/workflows || true
-      #     git add .github/workflows
-      #     git commit -m "Revert workflow files to base branch to avoid GITHUB_TOKEN block" || true
 
       - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch (excluding workflows)
         id: merge_step
@@ -121,13 +100,12 @@ jobs:
             echo "MERGE_CONFLICT=false" >> $GITHUB_ENV
           fi
           set -e
-          echo "📄 Listing changed files after merge:"
           git diff --name-only origin/"${TARGET_BRANCH}" HEAD
 
       - name: 📤 Push Feature Branch (even if conflicts exist)
         run: |
           git push origin "${FEATURE_BRANCH}" --force
-
+          
       # - name: 🧰 Authenticate GitHub CLI
       #   run: |
       #     echo "${GITHUB_TOKEN}" | gh auth login --with-token
