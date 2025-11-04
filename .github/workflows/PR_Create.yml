@@ -36,7 +36,7 @@ jobs:
           fi
 
       - name: 🐞 Debug Conflict Status
-        run: echo "Conflict status: $CONFLICTS"
+        run: echo "Conflict status:$CONFLICTS"
         env:
           CONFLICTS: ${{ env.conflicts }}
 
