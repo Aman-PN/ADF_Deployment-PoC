@@ -1,7 +1,4 @@
 Added a new code by Aman Pramodkumar Nandgaule
 modified the code 
 I added next line and code, by Aman Pramodkumar Nandgaule
-<<<<<<< HEAD
-=======
 My name is Aman
->>>>>>> origin/develop
