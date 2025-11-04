@@ -1,7 +1,3 @@
 Added a new code by Aman Pramodkumar Nandgaule
 modified the code 
-<<<<<<< HEAD
-I added next line, by Aman Pramodkumar Nandgaule
-=======
 I added next line and code, by Aman Pramodkumar Nandgaule
->>>>>>> origin/develop
