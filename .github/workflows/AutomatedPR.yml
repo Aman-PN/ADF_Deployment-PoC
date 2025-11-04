@@ -37,10 +37,12 @@ jobs:
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
+
       - name: 🐧 Setup Dependencies
         run: |
           sudo apt-get update -y
           sudo apt-get install -y jq curl git gh
+
       - name: 🔍 Determine Source and Feature Branch
         id: vars
         run: |
@@ -51,9 +53,11 @@ jobs:
           else
             echo "❌ Invalid target branch"; exit 1
           fi
+
           TODAY=$(TZ='Asia/Kolkata' date +'%d_%m_%y_%H_%M')
           FEATURE_BRANCH="feature/${TARGET_BRANCH}-${TODAY}"
           echo "FEATURE_BRANCH=$FEATURE_BRANCH" >> $GITHUB_ENV
+
       - name: 🔄 Prepare Branches
         run: |
           git fetch origin
@@ -62,38 +66,31 @@ jobs:
           git switch "${TARGET_BRANCH}"
           git pull origin "${TARGET_BRANCH}"
           git checkout -b "${FEATURE_BRANCH}"
-          
-      # - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch
-      #   run: |
-      #     set +e
-      #     echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH}..."
-      #     git merge origin/"${SOURCE_BRANCH}" --no-edit
-      #     MERGE_EXIT_CODE=$?
-      #     if [ $MERGE_EXIT_CODE -ne 0 ]; then
-      #       echo "❌ Merge conflict detected! Committing conflict markers for manual resolution."
-      #       git add .
-      #       git commit -am "Conflict detected during merge - manual resolution required" || true
-      #     fi
-      #     set -e
-
-      # - name: 🚫 Remove workflow files before pushing (safe fix)
-      #   run: |
-      #     echo "🧹 Removing workflow files to avoid permission issues..."
-      #     git checkout origin/${TARGET_BRANCH} -- .github/workflows || true
-      #     git add .github/workflows
-      #     git commit -m "Revert workflow files to base branch to avoid GITHUB_TOKEN block" || true
 
       - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch (excluding workflows)
         id: merge_step
         run: |
-          echo ".github/workflows/* merge=ours" >> .gitattributes
-          git add .gitattributes
-          git commit -m "Add merge strategy for workflows" || true
-          git config merge.ours.driver true
+          set +e
+          echo "Fetching latest changes from origin/${SOURCE_BRANCH}..."
           git fetch origin "${SOURCE_BRANCH}"
-          echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH} using ours strategy for workflows..."
-          git merge origin/"${SOURCE_BRANCH}" --no-edit || true
+
+          echo "Temporarily stashing .github/workflows to avoid merge conflicts..."
+          mkdir -p .github/workflows_backup
+          cp -r .github/workflows/* .github/workflows_backup/ || true
+          rm -rf .github/workflows/* || true
+          git add .github/workflows
+          git commit -m "Temporarily remove workflows before merge" || true
+
+          echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH}..."
+          git merge origin/"${SOURCE_BRANCH}" --no-edit
           MERGE_EXIT_CODE=$?
+
+          echo "Restoring .github/workflows after merge..."
+          cp -r .github/workflows_backup/* .github/workflows/ || true
+          rm -rf .github/workflows_backup
+          git add .github/workflows
+          git commit -m "Restore workflows after merge" || true
+
           if [ $MERGE_EXIT_CODE -ne 0 ]; then
             echo "MERGE_CONFLICT=true" >> $GITHUB_ENV
             git add .
@@ -102,11 +99,12 @@ jobs:
             echo "MERGE_CONFLICT=false" >> $GITHUB_ENV
           fi
           set -e
-          echo "📄 Listing changed files after merge:"
           git diff --name-only origin/"${TARGET_BRANCH}" HEAD
+
       - name: 📤 Push Feature Branch (even if conflicts exist)
         run: |
           git push origin "${FEATURE_BRANCH}" --force
+          
       # - name: 🧰 Authenticate GitHub CLI
       #   run: |
       #     echo "${GITHUB_TOKEN}" | gh auth login --with-token
@@ -128,5 +126,6 @@ jobs:
           else
             gh pr edit "$PR_NUMBER" --add-label "auto-promotion-ready"
           fi
+
       - name: 🎉 Done
         run: echo "✅ Promotion process completed successfully!"
