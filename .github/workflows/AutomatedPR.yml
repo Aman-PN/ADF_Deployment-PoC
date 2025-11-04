@@ -1,0 +1,154 @@
+name: Automated PR Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Target branch for promotion (stage or release)"
+        type: choice
+        options:
+          - 'stage'
+          - 'release'
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  promote-and-manage-pr:
+    name: 🚀 Promote Branch and Manage PR
+    runs-on: ubuntu-latest
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_USER: ${{ github.actor }}
+      REPO_NAME: ${{ github.event.repository.name }}
+      TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
+
+    steps:
+      - name: 🧩 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ⚙️ Configure Git Identity
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: 🐧 Setup Dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq curl git gh
+
+      - name: 🔍 Determine Source and Feature Branch
+        id: vars
+        run: |
+          if [ "${TARGET_BRANCH}" == "stage" ]; then
+            echo "SOURCE_BRANCH=develop" >> $GITHUB_ENV
+          elif [ "${TARGET_BRANCH}" == "release" ]; then
+            echo "SOURCE_BRANCH=stage" >> $GITHUB_ENV
+          else
+            echo "❌ Invalid target branch"; exit 1
+          fi
+
+          TODAY=$(TZ='Asia/Kolkata' date +'%d_%m_%y_%H_%M')
+          FEATURE_BRANCH="feature/${TARGET_BRANCH}-${TODAY}"
+          echo "FEATURE_BRANCH=$FEATURE_BRANCH" >> $GITHUB_ENV
+
+      - name: 🔄 Prepare Branches
+        run: |
+          git fetch origin
+          git switch "${SOURCE_BRANCH}"
+          git pull origin "${SOURCE_BRANCH}"
+          git switch "${TARGET_BRANCH}"
+          git pull origin "${TARGET_BRANCH}"
+          git checkout -b "${FEATURE_BRANCH}"
+          
+
+      # - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch
+      #   run: |
+      #     set +e
+      #     echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH}..."
+      #     git merge origin/"${SOURCE_BRANCH}" --no-edit
+      #     MERGE_EXIT_CODE=$?
+      #     if [ $MERGE_EXIT_CODE -ne 0 ]; then
+      #       echo "❌ Merge conflict detected! Committing conflict markers for manual resolution."
+      #       git add .
+      #       git commit -am "Conflict detected during merge - manual resolution required" || true
+      #     fi
+      #     set -e
+
+      # - name: 🚫 Remove workflow files before pushing (safe fix)
+      #   run: |
+      #     echo "🧹 Removing workflow files to avoid permission issues..."
+      #     git checkout origin/${TARGET_BRANCH} -- .github/workflows || true
+      #     git add .github/workflows
+      #     git commit -m "Revert workflow files to base branch to avoid GITHUB_TOKEN block" || true
+
+      - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch (excluding workflows)
+        id: merge_step
+        run: |
+          set +e
+          echo "Fetching latest changes from origin/${SOURCE_BRANCH}..."
+          git fetch origin "${SOURCE_BRANCH}"
+
+          echo "Temporarily stashing .github/workflows to avoid merge conflicts..."
+          mkdir -p .github/workflows_backup
+          cp -r .github/workflows/* .github/workflows_backup/ || true
+          rm -rf .github/workflows/* || true
+          git add .github/workflows
+          git commit -m "Temporarily remove workflows before merge" || true
+
+          echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH}..."
+          git merge origin/"${SOURCE_BRANCH}" --no-edit
+          MERGE_EXIT_CODE=$?
+
+          echo "Restoring .github/workflows after merge..."
+          cp -r .github/workflows_backup/* .github/workflows/ || true
+          rm -rf .github/workflows_backup
+          git add .github/workflows
+          git commit -m "Restore workflows after merge" || true
+
+          if [ $MERGE_EXIT_CODE -ne 0 ]; then
+            echo "❌ Merge conflict detected! Committing conflict markers for manual resolution."
+            echo "MERGE_CONFLICT=true" >> $GITHUB_ENV
+            git add .
+            git commit -am "Conflict detected during merge - manual resolution required" || true
+          else
+            echo "MERGE_CONFLICT=false" >> $GITHUB_ENV
+          fi
+          set -e
+          echo "📄 Listing changed files after merge:"
+          git diff --name-only origin/"${TARGET_BRANCH}" HEAD
+
+      - name: 📤 Push Feature Branch (even if conflicts exist)
+        run: |
+          git push origin "${FEATURE_BRANCH}" --force
+
+      # - name: 🧰 Authenticate GitHub CLI
+      #   run: |
+      #     echo "${GITHUB_TOKEN}" | gh auth login --with-token
+      #     gh auth status
+
+      # ✅ Always create PR (even if conflicts exist)
+      - name: 🪄 Create Pull Request
+        run: |
+          PR_TITLE="Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH}"
+          PR_BODY="Automated promotion: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
+          gh pr create \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            --base "$TARGET_BRANCH" \
+            --head "$FEATURE_BRANCH"
+          PR_NUMBER=$(gh pr list --head "${FEATURE_BRANCH}" --json number --jq '.[0].number')
+          if [ "${MERGE_CONFLICT}" == "true" ]; then
+            gh pr edit "$PR_NUMBER" --add-label "merge-conflict"
+          else
+            gh pr edit "$PR_NUMBER" --add-label "auto-promotion-ready"
+          fi
+
+      - name: 🎉 Done
+        run: echo "✅ Promotion process completed successfully!"
