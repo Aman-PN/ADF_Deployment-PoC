@@ -99,7 +99,6 @@ jobs:
             echo ".gitattributes already contains merge rule"
           fi
 
-          git config merge.ours.driver true
           git fetch origin "${SOURCE_BRANCH}"
           echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH} using ours strategy for workflows..."
           git merge origin/"${SOURCE_BRANCH}" --no-edit || true
@@ -111,7 +110,6 @@ jobs:
           else
             echo "MERGE_CONFLICT=false" >> $GITHUB_ENV
           fi
-
           set -e
           echo "📄 Listing changed files after merge:"
           git diff --name-only origin/"${TARGET_BRANCH}" HEAD
