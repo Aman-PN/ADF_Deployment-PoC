@@ -5,3 +5,7 @@ My name is Aman
 Added next line
 next line
 added nwe lime
+<<<<<<< HEAD
+=======
+I m devops eng
+>>>>>>> origin/develop
