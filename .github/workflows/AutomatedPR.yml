@@ -92,6 +92,7 @@ jobs:
           git commit -m "Restore workflows after merge" || true
 
           if [ $MERGE_EXIT_CODE -ne 0 ]; then
+            echo "❌ Merge conflict detected! Committing conflict markers for manual resolution."
             echo "MERGE_CONFLICT=true" >> $GITHUB_ENV
             git add .
             git commit -am "Conflict detected during merge - manual resolution required" || true
