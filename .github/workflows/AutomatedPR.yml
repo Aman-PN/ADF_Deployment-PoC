@@ -86,7 +86,7 @@ jobs:
           echo "Fetching latest changes from origin/${SOURCE_BRANCH}..."
           git fetch origin "${SOURCE_BRANCH}"
           echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH}..."
-          git merge origin/"${SOURCE_BRANCH}" --no-edit
+          git merge --squash origin/"${SOURCE_BRANCH}"
 
           MERGE_EXIT_CODE=$?
           if [ $MERGE_EXIT_CODE -ne 0 ]; then
