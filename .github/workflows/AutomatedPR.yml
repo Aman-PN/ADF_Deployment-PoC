@@ -67,30 +67,28 @@ jobs:
           git pull origin "${TARGET_BRANCH}"
           git checkout -b "${FEATURE_BRANCH}"
 
+      - name: ⚙️ Configure Merge Strategy for Workflows
+          run: |
+            if [ ! -f .gitattributes ]; then
+              touch .gitattributes
+            fi
+            if ! grep -Fxq ".github/workflows/* merge=ours" .gitattributes; then
+              echo ".github/workflows/* merge=ours" >> .gitattributes
+              git add .gitattributes
+              git commit -m "Configure merge strategy for workflows" || true
+            fi
+            git config merge.ours.driver true
+
       - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch (excluding workflows)
         id: merge_step
         run: |
           set +e
           echo "Fetching latest changes from origin/${SOURCE_BRANCH}..."
           git fetch origin "${SOURCE_BRANCH}"
-
-          echo "Temporarily stashing .github/workflows to avoid merge conflicts..."
-          mkdir -p .github/workflows_backup
-          cp -r .github/workflows/* .github/workflows_backup/ || true
-          rm -rf .github/workflows/* || true
-          git add .github/workflows
-          git commit -m "Temporarily remove workflows before merge" || true
-
           echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH}..."
           git merge origin/"${SOURCE_BRANCH}" --no-edit
+
           MERGE_EXIT_CODE=$?
-
-          echo "Restoring .github/workflows after merge..."
-          cp -r .github/workflows_backup/* .github/workflows/ || true
-          rm -rf .github/workflows_backup
-          git add .github/workflows
-          git commit -m "Restore workflows after merge" || true
-
           if [ $MERGE_EXIT_CODE -ne 0 ]; then
             echo "❌ Merge conflict detected! Committing conflict markers for manual resolution."
             echo "MERGE_CONFLICT=true" >> $GITHUB_ENV
