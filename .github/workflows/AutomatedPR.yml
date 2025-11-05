@@ -68,16 +68,16 @@ jobs:
           git checkout -b "${FEATURE_BRANCH}"
 
       - name: ⚙️ Configure Merge Strategy for Workflows
-          run: |
-            if [ ! -f .gitattributes ]; then
-              touch .gitattributes
-            fi
-            if ! grep -Fxq ".github/workflows/* merge=ours" .gitattributes; then
-              echo ".github/workflows/* merge=ours" >> .gitattributes
-              git add .gitattributes
-              git commit -m "Configure merge strategy for workflows" || true
-            fi
-            git config merge.ours.driver true
+        run: |
+          if [ ! -f .gitattributes ]; then
+            touch .gitattributes
+          fi
+          if ! grep -Fxq ".github/workflows/* merge=ours" .gitattributes; then
+            echo ".github/workflows/* merge=ours" >> .gitattributes
+            git add .gitattributes
+            git commit -m "Configure merge strategy for workflows" || true
+          fi
+          git config merge.ours.driver true
 
       - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch (excluding workflows)
         id: merge_step
