@@ -1,4 +1,8 @@
 added new code by Aman Nandgaule
 added new line
 new line by nothinb
+<<<<<<< HEAD
 added next line
+=======
+added next line
+>>>>>>> origin/develop
