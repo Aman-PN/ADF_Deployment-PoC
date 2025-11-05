@@ -1,3 +1,7 @@
 added new file by Prajyu, Amya
 name
 added bew
+<<<<<<< HEAD
+=======
+I m computer engineer
+>>>>>>> origin/develop
