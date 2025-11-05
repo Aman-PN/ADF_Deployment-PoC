@@ -1,6 +1,3 @@
 added new file by Prajyu, Amya
 name
-<<<<<<< HEAD
-=======
 added bew
->>>>>>> origin/develop
