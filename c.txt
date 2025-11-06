@@ -1,4 +1,9 @@
 added new file by Prajyu, Amya
 name
 added bew
+<<<<<<< HEAD
 I m computer engineer
+=======
+I m computer engineer
+next paragraph
+>>>>>>> origin/develop
