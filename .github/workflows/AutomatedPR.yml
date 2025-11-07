@@ -79,7 +79,7 @@ jobs:
           fi
           git config merge.ours.driver true
 
-      - name: 🔀 Merge "${SOURCE_BRANCH}" into feature branch (excluding workflows)
+      - name: 🔀 Merge ${{ env.SOURCE_BRANCH }} into feature branch (excluding workflows)
         id: merge_step
         run: |
           set +e
