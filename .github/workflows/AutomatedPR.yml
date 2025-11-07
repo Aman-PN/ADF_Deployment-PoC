@@ -113,8 +113,8 @@ jobs:
           MERGE_EXIT_CODE=$?
 
           if [ $MERGE_EXIT_CODE -ne 0 ]; then
-            echo "❌ Squash merge failed due to conflicts. Retrying with normal merge using -X theirs..."
-            git merge --abort || true
+            echo "❌ Squash merge failed due to conflicts. Cleaning up and retrying with normal merge using -X theirs..."
+            git reset --merge  # Clean up squash merge state
             git merge origin/"${SOURCE_BRANCH}" -X theirs --no-edit
             MERGE_EXIT_CODE=$?
             if [ $MERGE_EXIT_CODE -ne 0 ]; then
@@ -131,9 +131,6 @@ jobs:
             echo "MERGE_CONFLICT=false" >> $GITHUB_ENV
             git commit -m "Added changes from ${SOURCE_BRANCH}"
           fi
-
-          set -e
-          git diff --name-only origin/"${TARGET_BRANCH}" HEAD
 
       - name: 📤 Push Feature Branch (even if conflicts exist)
         run: |
