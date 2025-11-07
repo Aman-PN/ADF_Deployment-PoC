@@ -1,2 +1,7 @@
 added one file
+<<<<<<< HEAD
 added 2nd file
+=======
+added 2nd file
+added 3rd file
+>>>>>>> origin/develop
