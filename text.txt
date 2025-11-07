@@ -1,3 +1,7 @@
 added one file
 added 2nd file
+<<<<<<< HEAD
 added 3rd file
+=======
+added 3rd file, by Aman
+>>>>>>> origin/develop
