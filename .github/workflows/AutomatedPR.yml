@@ -115,7 +115,11 @@ jobs:
           if [ $MERGE_EXIT_CODE -ne 0 ]; then
             echo "❌ Squash merge failed due to conflicts. Cleaning up and retrying with normal merge using -X theirs..."
             git reset --merge  # Clean up squash merge state
-            git merge origin/"${SOURCE_BRANCH}" -X theirs --no-edit
+            git merge origin/"${SOURCE_BRANCH}" -X theirs --no-edit  
+            echo "Squashing commits after fallback merge..."
+            git reset --soft $(git merge-base HEAD origin/${TARGET_BRANCH})
+            git commit -m "Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH} (auto-resolved)"
+
             MERGE_EXIT_CODE=$?
             if [ $MERGE_EXIT_CODE -ne 0 ]; then
               echo "❌ Even fallback merge failed! Manual resolution required."
