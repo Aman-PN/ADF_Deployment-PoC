@@ -85,7 +85,7 @@ jobs:
           set +e
           echo "Fetching latest changes from origin/${SOURCE_BRANCH}..."
           git fetch origin "${SOURCE_BRANCH}"
-          echo "Merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH}..."
+          echo "Squash merging origin/${SOURCE_BRANCH} into ${FEATURE_BRANCH}..."
           git merge --squash origin/"${SOURCE_BRANCH}"
 
           MERGE_EXIT_CODE=$?
@@ -93,9 +93,10 @@ jobs:
             echo "❌ Merge conflict detected! Committing conflict markers for manual resolution."
             echo "MERGE_CONFLICT=true" >> $GITHUB_ENV
             git add .
-            git commit -am "Conflict detected during merge - manual resolution required" || true
+            git commit -am "Conflict detected during squash merge - manual resolution required" || true
           else
             echo "MERGE_CONFLICT=false" >> $GITHUB_ENV
+            git commit -m "Added changes from ${SOURCE_BRANCH}"
           fi
           set -e
           git diff --name-only origin/"${TARGET_BRANCH}" HEAD
