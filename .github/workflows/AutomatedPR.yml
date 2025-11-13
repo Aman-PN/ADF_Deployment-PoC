@@ -136,6 +136,16 @@ jobs:
             git commit -m "Added changes from ${SOURCE_BRANCH}"
           fi
 
+          # ✅ Pre-check for changes before committing
+          if git diff --cached --quiet; then
+            echo "::notice::✅ No changes detected between ${SOURCE_BRANCH} and ${TARGET_BRANCH}. Skipping PR creation."
+            echo "NO_CHANGES=true" >> $GITHUB_ENV
+            exit 0
+          else
+            echo "✅ Changes detected. Proceeding with PR creation..."
+            echo "NO_CHANGES=false" >> $GITHUB_ENV
+          fi
+
       - name: 📤 Push Feature Branch (even if conflicts exist)
         run: |
           git push origin "${FEATURE_BRANCH}" --force
