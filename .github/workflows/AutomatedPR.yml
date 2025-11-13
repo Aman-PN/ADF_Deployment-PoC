@@ -158,6 +158,7 @@ jobs:
 
       # ✅ Always create PR (even if conflicts exist)
       - name: 🪄 Create Pull Request
+        if: env.NO_CHANGES == 'false'
         run: |
           PR_TITLE="Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH}"
           PR_BODY="Automated promotion: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
