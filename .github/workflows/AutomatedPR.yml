@@ -147,7 +147,7 @@ jobs:
           fi
 
       - name: 📤 Push Feature Branch (even if conflicts exist)
-        if: env.NO_CHANGES == 'false'
+        if: env.NO_CHANGES == 'true'
         run: |
           git push origin "${FEATURE_BRANCH}" --force
           
@@ -158,7 +158,7 @@ jobs:
 
       # ✅ Always create PR (even if conflicts exist)
       - name: 🪄 Create Pull Request
-        if: env.NO_CHANGES == 'false'
+        if: env.NO_CHANGES == 'true'
         run: |
           PR_TITLE="Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH}"
           PR_BODY="Automated promotion: ${SOURCE_BRANCH} → ${TARGET_BRANCH}"
