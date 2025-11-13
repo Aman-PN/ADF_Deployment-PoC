@@ -132,7 +132,7 @@ jobs:
             fi
           else
             echo "✅ Squash merge succeeded."
-            echo "MERGE_CONFLICT=false" >> $GITHUB_ENV
+            echo "MERGE_CONFLICT=false" >> $GITH  UB_ENV
             git commit -m "Added changes from ${SOURCE_BRANCH}"
           fi
 
@@ -140,13 +140,14 @@ jobs:
           if git diff --cached --quiet; then
             echo "::notice::✅ No changes detected between ${SOURCE_BRANCH} and ${TARGET_BRANCH}. Skipping PR creation."
             echo "NO_CHANGES=true" >> $GITHUB_ENV
-            exit 1
+            exit 0
           else
             echo "✅ Changes detected. Proceeding with PR creation..."
             echo "NO_CHANGES=false" >> $GITHUB_ENV
           fi
 
       - name: 📤 Push Feature Branch (even if conflicts exist)
+        if: env.NO_CHANGES == 'false'
         run: |
           git push origin "${FEATURE_BRANCH}" --force
           
