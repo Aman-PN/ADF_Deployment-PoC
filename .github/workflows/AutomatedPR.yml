@@ -113,41 +113,29 @@ jobs:
           MERGE_EXIT_CODE=$?
 
           if [ $MERGE_EXIT_CODE -ne 0 ]; then
-            echo "❌ Squash merge failed due to conflicts. Retrying with normal merge using -X theirs..."
-            git reset --merge
-            git merge origin/"${SOURCE_BRANCH}" -X theirs --no-edit
-            FALLBACK_EXIT_CODE=$?
+            echo "❌ Squash merge failed due to conflicts. Cleaning up and retrying with normal merge using -X theirs..."
+            git reset --merge  # Clean up squash merge state
+            git merge origin/"${SOURCE_BRANCH}" -X theirs --no-edit  
+            echo "Squashing commits after fallback merge..."
+            git reset --soft $(git merge-base HEAD origin/${TARGET_BRANCH})
+            git commit -m "Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH} (auto-resolved)"
 
-            if [ $FALLBACK_EXIT_CODE -ne 0 ]; then
+            MERGE_EXIT_CODE=$?
+            if [ $MERGE_EXIT_CODE -ne 0 ]; then
               echo "❌ Even fallback merge failed! Manual resolution required."
               echo "MERGE_CONFLICT=true" >> $GITHUB_ENV
               git add .
               git commit -am "Conflict detected during fallback merge - manual resolution required" || true
             else
-              # ✅ Check if fallback merge introduced any changes
-              if git diff --quiet; then
-                echo "ℹ️ No changes detected after fallback merge. Exiting gracefully."
-                echo "NO_CHANGES=true" >> $GITHUB_ENV
-                exit 0
-              else
-                echo "✅ Fallback merge succeeded."
-                echo "MERGE_CONFLICT=false" >> $GITHUB_ENV
-                git reset --soft $(git merge-base HEAD origin/${TARGET_BRANCH})
-                git commit -m "Promote ${SOURCE_BRANCH} to ${TARGET_BRANCH} (auto-resolved)"
-              fi
+              echo "✅ Fallback merge succeeded."
+              echo "MERGE_CONFLICT=false" >> $GITHUB_ENV
             fi
           else
-            # ✅ Check if squash merge introduced any changes
-            if git diff --quiet; then
-              echo "ℹ️ No changes detected after squash merge. Exiting gracefully."
-              echo "NO_CHANGES=true" >> $GITHUB_ENV
-              exit 0
-            else
-              echo "✅ Squash merge succeeded."
-              echo "MERGE_CONFLICT=false" >> $GITHUB_ENV
-              git commit -m "Added changes from ${SOURCE_BRANCH}"
-            fi
+            echo "✅ Squash merge succeeded."
+            echo "MERGE_CONFLICT=false" >> $GITHUB_ENV
+            git commit -m "Added changes from ${SOURCE_BRANCH}"
           fi
+          
       - name: 📤 Push Feature Branch (even if conflicts exist)
         if: env.NO_CHANGES != 'true'
         run: |
